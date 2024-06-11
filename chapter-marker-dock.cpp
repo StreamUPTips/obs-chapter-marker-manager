@@ -17,7 +17,10 @@ ChapterMarkerDock::ChapterMarkerDock(QWidget *parent)
 	  feedbackLabel(new QLabel("", this)),
 	  settingsDialog(nullptr),
 	  chapterOnSceneChangeCheckbox(nullptr),
+	  showChapterHistoryCheckbox(nullptr),
 	  chapterOnSceneChangeEnabled(false),
+	  showChapterHistoryEnabled(true), // Default to true
+	  historyLabel(new QLabel("Previous Chapters:", this)),
 	  chapterHistoryList(new QListWidget(this))
 {
 	QVBoxLayout *mainLayout = new QVBoxLayout(this);
@@ -47,6 +50,9 @@ ChapterMarkerDock::ChapterMarkerDock(QWidget *parent)
 	mainLayout->addWidget(saveButton);
 	mainLayout->addWidget(settingsButton);
 	mainLayout->addWidget(feedbackLabel);
+
+	// Add the history label and list to the layout
+	mainLayout->addWidget(historyLabel);
 	mainLayout->addWidget(chapterHistoryList);
 
 	setLayout(mainLayout);
@@ -55,6 +61,8 @@ ChapterMarkerDock::ChapterMarkerDock(QWidget *parent)
 		&ChapterMarkerDock::onSettingsClicked);
 	connect(chapterHistoryList, &QListWidget::itemClicked, this,
 		&ChapterMarkerDock::onHistoryItemSelected);
+	connect(chapterHistoryList, &QListWidget::itemDoubleClicked, this,
+		&ChapterMarkerDock::onHistoryItemDoubleClicked);
 
 	feedbackTimer.setInterval(5000);
 	feedbackTimer.setSingleShot(true);
@@ -70,6 +78,10 @@ ChapterMarkerDock::ChapterMarkerDock(QWidget *parent)
 			}
 		},
 		this);
+
+	// Initialize the visibility of the chapter history based on the default setting
+	historyLabel->setVisible(showChapterHistoryEnabled);
+	chapterHistoryList->setVisible(showChapterHistoryEnabled);
 }
 
 ChapterMarkerDock::~ChapterMarkerDock()
@@ -158,6 +170,10 @@ void ChapterMarkerDock::onSettingsClicked()
 			"Set chapter on scene change", settingsDialog);
 		formLayout->addRow(chapterOnSceneChangeCheckbox);
 
+		showChapterHistoryCheckbox =
+			new QCheckBox("Show chapter history", settingsDialog);
+		formLayout->addRow(showChapterHistoryCheckbox);
+
 		QDialogButtonBox *buttonBox = new QDialogButtonBox(
 			QDialogButtonBox::Ok | QDialogButtonBox::Cancel,
 			settingsDialog);
@@ -171,12 +187,21 @@ void ChapterMarkerDock::onSettingsClicked()
 		connect(settingsDialog, &QDialog::accepted, [this]() {
 			chapterOnSceneChangeEnabled =
 				chapterOnSceneChangeCheckbox->isChecked();
+			showChapterHistoryEnabled =
+				showChapterHistoryCheckbox->isChecked();
+
+			// Toggle the visibility of the chapter history
+			historyLabel->setVisible(showChapterHistoryEnabled);
+			chapterHistoryList->setVisible(
+				showChapterHistoryEnabled);
 		});
 	}
 
-	if (chapterOnSceneChangeCheckbox) {
+	if (chapterOnSceneChangeCheckbox && showChapterHistoryCheckbox) {
 		chapterOnSceneChangeCheckbox->setChecked(
 			chapterOnSceneChangeEnabled);
+		showChapterHistoryCheckbox->setChecked(
+			showChapterHistoryEnabled);
 		settingsDialog->exec();
 	}
 }
@@ -201,7 +226,7 @@ void ChapterMarkerDock::onSceneChanged()
 							.arg(scene_name),
 						false);
 
-					// Insert the chapter at the top of the history list
+					// Insert the scene name at the top of the history list
 					chapterHistoryList->insertItem(
 						0,
 						QString::fromUtf8(scene_name));
@@ -227,5 +252,13 @@ void ChapterMarkerDock::onHistoryItemSelected()
 	QListWidgetItem *item = chapterHistoryList->currentItem();
 	if (item) {
 		chapterNameEdit->setText(item->text());
+	}
+}
+
+void ChapterMarkerDock::onHistoryItemDoubleClicked(QListWidgetItem *item)
+{
+	if (item) {
+		chapterNameEdit->setText(item->text());
+		saveButton->click(); // Trigger the save button click
 	}
 }

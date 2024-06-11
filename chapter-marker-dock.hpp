@@ -30,6 +30,7 @@ private slots:
 	void onSettingsClicked();
 	void onSceneChanged();
 	void onHistoryItemSelected();
+	void onHistoryItemDoubleClicked(QListWidgetItem *item);
 
 private:
 	QLineEdit *chapterNameEdit;
@@ -42,8 +43,12 @@ private:
 
 	QDialog *settingsDialog;
 	QCheckBox *chapterOnSceneChangeCheckbox;
+	QCheckBox *
+		showChapterHistoryCheckbox; // Checkbox for toggling chapter history visibility
 	bool chapterOnSceneChangeEnabled;
+	bool showChapterHistoryEnabled;
 
+	QLabel *historyLabel;
 	QListWidget *chapterHistoryList;
 };
 
