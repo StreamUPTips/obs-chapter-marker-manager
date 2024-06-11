@@ -166,7 +166,7 @@ void ChapterMarkerDock::onSettingsClicked()
 		formLayout->addRow(showChapterHistoryCheckbox);
 
 		exportChaptersCheckbox = new QCheckBox(
-			"Export chapters automatically", settingsDialog);
+			"Export chapters to .txt file", settingsDialog);
 		formLayout->addRow(exportChaptersCheckbox);
 
 		addChapterSourceCheckbox = new QCheckBox(
@@ -269,6 +269,10 @@ void ChapterMarkerDock::writeChapterToFile(const QString &chapterName,
 					   const QString &timestamp,
 					   const QString &chapterSource)
 {
+	if (!exportChaptersEnabled) {
+		return;
+	}
+
 	if (chapterFilePath.isEmpty()) {
 		blog(LOG_ERROR,
 		     "[StreamUP Record Chapter Manager] Chapter file path is not set.");
@@ -334,8 +338,19 @@ void ChapterMarkerDock::addChapterMarker(const QString &chapterName,
 					 const QString &chapterSource)
 {
 	QString fullChapterName = chapterName;
+	QString sourceText = " (" + chapterSource + ")";
+
 	if (addChapterSourceEnabled) {
-		fullChapterName += " (" + chapterSource + ")";
+		if (!fullChapterName.endsWith(sourceText)) {
+			fullChapterName += sourceText;
+		}
+	}
+
+	// Check for duplicates in the chapter history list
+	for (int i = 0; i < chapterHistoryList->count(); ++i) {
+		if (chapterHistoryList->item(i)->text() == fullChapterName) {
+			return; // Do not add if duplicate is found
+		}
 	}
 
 	if (obs_frontend_recording_add_chapter(QT_TO_UTF8(fullChapterName))) {

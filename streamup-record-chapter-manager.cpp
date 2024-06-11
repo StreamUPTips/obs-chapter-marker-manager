@@ -55,6 +55,10 @@ static void LoadChapterMarkerDock()
 
 static void createChapterFile()
 {
+	if (!dock_widget || !dock_widget->exportChaptersEnabled) {
+		return;
+	}
+
 	obs_output_t *output = obs_frontend_get_recording_output();
 	if (!output) {
 		blog(LOG_ERROR,
@@ -100,57 +104,14 @@ static void createChapterFile()
 		     "[StreamUP Record Chapter Manager] Created chapter file: %s",
 		     QT_TO_UTF8(chapterFilePath));
 
-		if (dock_widget) {
-			dock_widget->setChapterFilePath(chapterFilePath);
-			QString timestamp =
-				dock_widget->getCurrentRecordingTime();
-			dock_widget->writeChapterToFile("Start", timestamp,
-							"Recording");
-			dock_widget->addChapterMarker("Start", "Recording");
-		}
+		dock_widget->setChapterFilePath(chapterFilePath);
+		QString timestamp = dock_widget->getCurrentRecordingTime();
+		dock_widget->addChapterMarker("Start", "Recording");
 	} else {
 		blog(LOG_ERROR,
 		     "[StreamUP Record Chapter Manager] Failed to create chapter file: %s",
 		     QT_TO_UTF8(chapterFilePath));
 	}
-}
-
-static bool add_chapter_marker(const char *chapter_name)
-{
-	if (!obs_frontend_recording_active()) {
-		blog(LOG_WARNING,
-		     "[StreamUP Record Chapter Manager] Recording is not active.");
-		if (dock_widget) {
-			dock_widget->showFeedbackMessage(
-				"Recording is not active. Chapter marker not added.",
-				true);
-		}
-		return false;
-	}
-
-	bool result = obs_frontend_recording_add_chapter(chapter_name);
-	if (!result) {
-		blog(LOG_ERROR,
-		     "[StreamUP Record Chapter Manager] Failed to add chapter marker. Ensure the output supports chapter markers.");
-		if (dock_widget) {
-			dock_widget->showFeedbackMessage(
-				"Failed to add chapter marker. Ensure the output supports chapter markers.",
-				true);
-		}
-	} else {
-		blog(LOG_INFO,
-		     "[StreamUP Record Chapter Manager] Added chapter marker: %s",
-		     chapter_name ? chapter_name : "Unnamed Chapter");
-		if (dock_widget) {
-			dock_widget->showFeedbackMessage(
-				QString("Added chapter marker: %1")
-					.arg(chapter_name ? chapter_name
-							  : "Unnamed Chapter"),
-				false);
-		}
-	}
-
-	return result;
 }
 
 static void on_frontend_event(enum obs_frontend_event event, void *)
@@ -159,7 +120,6 @@ static void on_frontend_event(enum obs_frontend_event event, void *)
 	case OBS_FRONTEND_EVENT_RECORDING_STARTED:
 		if (dock_widget) {
 			dock_widget->updateCurrentChapterLabel("Start");
-			add_chapter_marker("Start");
 			createChapterFile();
 		}
 		break;
@@ -188,7 +148,8 @@ bool obs_module_load()
 		[](void *data, obs_hotkey_id id, obs_hotkey_t *hotkey,
 		   bool pressed) {
 			if (pressed) {
-				add_chapter_marker("Unnamed Chapter");
+				dock_widget->addChapterMarker("Unnamed Chapter",
+							      "Hotkey");
 			}
 		},
 		nullptr);

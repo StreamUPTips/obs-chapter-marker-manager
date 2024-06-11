@@ -36,6 +36,8 @@ public:
     void clearChapterHistory();
     void setAddChapterSourceEnabled(bool enabled);
     bool isAddChapterSourceEnabled() const;
+    bool exportChaptersEnabled;
+
 
 private slots:
     void onSaveClicked();
@@ -60,7 +62,6 @@ private:
     QCheckBox *exportChaptersCheckbox;
     bool chapterOnSceneChangeEnabled;
     bool showChapterHistoryEnabled;
-    bool exportChaptersEnabled;
     QString chapterFilePath;
     QCheckBox *addChapterSourceCheckbox;
     bool addChapterSourceEnabled;
