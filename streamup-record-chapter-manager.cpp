@@ -106,6 +106,8 @@ static void createChapterFile()
 
 		dock_widget->setChapterFilePath(chapterFilePath);
 		QString timestamp = dock_widget->getCurrentRecordingTime();
+		dock_widget->writeChapterToFile("Start", timestamp,
+						"Recording");
 		dock_widget->addChapterMarker("Start", "Recording");
 	} else {
 		blog(LOG_ERROR,
@@ -148,8 +150,13 @@ bool obs_module_load()
 		[](void *data, obs_hotkey_id id, obs_hotkey_t *hotkey,
 		   bool pressed) {
 			if (pressed) {
-				dock_widget->addChapterMarker("Unnamed Chapter",
-							      "Hotkey");
+				// Access the dock widget and use the defaultChapterName
+				if (dock_widget) {
+					dock_widget->addChapterMarker(
+						dock_widget
+							->getDefaultChapterName(),
+						"Hotkey");
+				}
 			}
 		},
 		nullptr);

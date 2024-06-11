@@ -7,14 +7,21 @@
 #include <QFile>
 #include <QTextStream>
 #include <QDir>
+#include <QComboBox>
+#include <QListWidget>
+#include <QCheckBox>
+#include <QDialogButtonBox>
+#include <QFrame>
+#include <QGroupBox>
+
 
 #define QT_TO_UTF8(str) str.toUtf8().constData()
 
 ChapterMarkerDock::ChapterMarkerDock(QWidget *parent)
-	: QWidget(parent),
+	: QFrame(parent),
 	  chapterNameEdit(new QLineEdit(this)),
 	  saveButton(new QPushButton("Save Chapter Marker", this)),
-	  settingsButton(new QPushButton("Settings", this)),
+	  settingsButton(new QPushButton(this)), // Create the settings button
 	  currentChapterTextLabel(new QLabel("Current Chapter:", this)),
 	  currentChapterNameLabel(new QLabel("No Recording Active", this)),
 	  feedbackLabel(new QLabel("", this)),
@@ -23,17 +30,26 @@ ChapterMarkerDock::ChapterMarkerDock(QWidget *parent)
 	  showChapterHistoryCheckbox(nullptr),
 	  exportChaptersCheckbox(nullptr),
 	  addChapterSourceCheckbox(nullptr),
+	  ignoredScenesListWidget(nullptr),
 	  chapterOnSceneChangeEnabled(false),
 	  showChapterHistoryEnabled(true), // Default to true
 	  exportChaptersEnabled(false),    // Default to false
 	  addChapterSourceEnabled(false),  // Default to false
-	  historyLabel(new QLabel("Previous Chapters:", this)),
-	  chapterHistoryList(new QListWidget(this))
+	  chapterHistoryList(new QListWidget(this)),
+	  defaultChapterName("Chapter"), // Default to "Chapter"
+	  chapterCount(1)                // Initialize chapter count to 1
 {
+	// Set the frame style
+	this->setFrameStyle(QFrame::StyledPanel | QFrame::Raised);
+
 	QVBoxLayout *mainLayout = new QVBoxLayout(this);
+	mainLayout->setAlignment(
+		Qt::AlignTop | Qt::AlignLeft); // Align main layout to top left
 
 	QHBoxLayout *chapterLabelLayout = new QHBoxLayout();
-	chapterLabelLayout->setAlignment(Qt::AlignTop | Qt::AlignLeft);
+	chapterLabelLayout->setAlignment(
+		Qt::AlignTop |
+		Qt::AlignLeft); // Align chapter label layout to top left
 
 	currentChapterTextLabel->setAlignment(Qt::AlignTop | Qt::AlignLeft);
 	currentChapterNameLabel->setAlignment(Qt::AlignTop | Qt::AlignLeft);
@@ -52,20 +68,50 @@ ChapterMarkerDock::ChapterMarkerDock(QWidget *parent)
 
 	feedbackLabel->setStyleSheet("color: green;");
 
-	mainLayout->addLayout(chapterLabelLayout);
-	mainLayout->addWidget(chapterNameEdit);
-	mainLayout->addWidget(saveButton);
-	mainLayout->addWidget(settingsButton);
-	mainLayout->addWidget(feedbackLabel);
+	QHBoxLayout *saveButtonLayout = new QHBoxLayout();
 
-	// Add the history label and list to the layout
-	mainLayout->addWidget(historyLabel);
-	mainLayout->addWidget(chapterHistoryList);
+	// Make Save Chapter Marker button fill the horizontal space
+	saveButton->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 
-	setLayout(mainLayout);
+	// Configure the settings button
+	settingsButton->setMinimumSize(32, 24);
+	settingsButton->setMaximumSize(32, 24);
+	settingsButton->setProperty("themeID", "configIconSmall");
+	settingsButton->setIconSize(QSize(20, 20));
+	settingsButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+
+	// Add the Save Chapter Marker button and a stretch to push the settings button to the right
+	saveButtonLayout->addWidget(saveButton);
+	saveButtonLayout->addStretch();
+	saveButtonLayout->addWidget(settingsButton);
+
+	saveButtonLayout->setAlignment(saveButton, Qt::AlignLeft);
+	saveButtonLayout->setAlignment(settingsButton, Qt::AlignRight);
 
 	connect(settingsButton, &QPushButton::clicked, this,
 		&ChapterMarkerDock::onSettingsClicked);
+
+	mainLayout->addLayout(chapterLabelLayout);
+	mainLayout->addWidget(chapterNameEdit);
+	mainLayout->addLayout(saveButtonLayout);
+	mainLayout->addWidget(feedbackLabel);
+
+	// GroupBox for Previous Chapters
+	previousChaptersGroup = new QGroupBox("Previous Chapters", this);
+	previousChaptersGroup->setStyleSheet(
+		"QGroupBox { font-weight: bold; border: 1px solid gray; padding: 10px; margin-top: 10px; } QGroupBox::title { subcontrol-origin: margin; subcontrol-position: top center; padding: 0 3px; }");
+	QVBoxLayout *previousChaptersLayout =
+		new QVBoxLayout(previousChaptersGroup);
+	previousChaptersLayout->setAlignment(
+		Qt::AlignTop |
+		Qt::AlignLeft); // Align previous chapters layout to top left
+	previousChaptersLayout->addWidget(chapterHistoryList);
+	previousChaptersGroup->setLayout(previousChaptersLayout);
+
+	mainLayout->addWidget(previousChaptersGroup);
+
+	setLayout(mainLayout);
+
 	connect(chapterHistoryList, &QListWidget::itemClicked, this,
 		&ChapterMarkerDock::onHistoryItemSelected);
 	connect(chapterHistoryList, &QListWidget::itemDoubleClicked, this,
@@ -90,8 +136,7 @@ ChapterMarkerDock::ChapterMarkerDock(QWidget *parent)
 		this);
 
 	// Initialize the visibility of the chapter history based on the default setting
-	historyLabel->setVisible(showChapterHistoryEnabled);
-	chapterHistoryList->setVisible(showChapterHistoryEnabled);
+	previousChaptersGroup->setVisible(showChapterHistoryEnabled);
 }
 
 ChapterMarkerDock::~ChapterMarkerDock()
@@ -155,23 +200,78 @@ void ChapterMarkerDock::onSettingsClicked()
 	if (!settingsDialog) {
 		settingsDialog = new QDialog(this);
 		settingsDialog->setWindowTitle("Settings");
+		settingsDialog->setFixedSize(
+			400, 350); // Adjust the size for new settings
 
-		QFormLayout *formLayout = new QFormLayout(settingsDialog);
-		chapterOnSceneChangeCheckbox = new QCheckBox(
-			"Set chapter on scene change", settingsDialog);
-		formLayout->addRow(chapterOnSceneChangeCheckbox);
+		QVBoxLayout *mainLayout = new QVBoxLayout(settingsDialog);
 
-		showChapterHistoryCheckbox =
-			new QCheckBox("Show chapter history", settingsDialog);
-		formLayout->addRow(showChapterHistoryCheckbox);
+		// GroupBox for General Settings
+		QGroupBox *generalSettingsGroup =
+			new QGroupBox("General Settings", settingsDialog);
+		QVBoxLayout *generalSettingsLayout =
+			new QVBoxLayout(generalSettingsGroup);
+
+		// Add new setting for default chapter marker name
+		QLabel *defaultChapterNameLabel = new QLabel(
+			"Default Chapter Name:", generalSettingsGroup);
+		defaultChapterNameEdit = new QLineEdit(generalSettingsGroup);
+		defaultChapterNameEdit->setPlaceholderText(
+			"Enter default chapter name");
+		defaultChapterNameEdit->setText(defaultChapterName);
+		generalSettingsLayout->addWidget(defaultChapterNameLabel);
+		generalSettingsLayout->addWidget(defaultChapterNameEdit);
+
+		showChapterHistoryCheckbox = new QCheckBox(
+			"Show chapter history", generalSettingsGroup);
+		generalSettingsLayout->addWidget(showChapterHistoryCheckbox);
 
 		exportChaptersCheckbox = new QCheckBox(
-			"Export chapters to .txt file", settingsDialog);
-		formLayout->addRow(exportChaptersCheckbox);
+			"Export chapters to .txt file", generalSettingsGroup);
+		generalSettingsLayout->addWidget(exportChaptersCheckbox);
 
 		addChapterSourceCheckbox = new QCheckBox(
-			"Add chapter trigger source", settingsDialog);
-		formLayout->addRow(addChapterSourceCheckbox);
+			"Add chapter trigger source", generalSettingsGroup);
+		generalSettingsLayout->addWidget(addChapterSourceCheckbox);
+
+		generalSettingsGroup->setLayout(generalSettingsLayout);
+
+		// GroupBox for Chapter on Scene Change Settings
+		QGroupBox *sceneChangeSettingsGroup =
+			new QGroupBox("Scene Change Settings", settingsDialog);
+		QVBoxLayout *sceneChangeSettingsLayout =
+			new QVBoxLayout(sceneChangeSettingsGroup);
+
+		chapterOnSceneChangeCheckbox =
+			new QCheckBox("Set chapter on scene change",
+				      sceneChangeSettingsGroup);
+		sceneChangeSettingsLayout->addWidget(
+			chapterOnSceneChangeCheckbox);
+
+		// GroupBox for Ignored Scenes
+		ignoredScenesGroup = new QGroupBox(
+			"Ignored Scenes",
+			sceneChangeSettingsGroup); // Initialize the member variable
+		ignoredScenesGroup->setStyleSheet(
+			"QGroupBox { font-weight: bold; border: 1px solid gray; padding: 10px; margin-top: 10px; } QGroupBox::title { subcontrol-origin: margin; subcontrol-position: top center; padding: 0 3px; }");
+		QVBoxLayout *ignoredScenesLayout =
+			new QVBoxLayout(ignoredScenesGroup);
+
+		ignoredScenesListWidget = new QListWidget(ignoredScenesGroup);
+		ignoredScenesListWidget->setSelectionMode(
+			QAbstractItemView::MultiSelection);
+		ignoredScenesListWidget->setMinimumHeight(
+			100); // Set a minimum height for the ignored scenes list
+		ignoredScenesLayout->addWidget(ignoredScenesListWidget);
+
+		ignoredScenesGroup->setLayout(ignoredScenesLayout);
+		ignoredScenesGroup->setVisible(false); // Initially hidden
+		sceneChangeSettingsLayout->addWidget(ignoredScenesGroup);
+
+		sceneChangeSettingsGroup->setLayout(sceneChangeSettingsLayout);
+
+		// Add groups to main layout
+		mainLayout->addWidget(generalSettingsGroup);
+		mainLayout->addWidget(sceneChangeSettingsGroup);
 
 		QDialogButtonBox *buttonBox = new QDialogButtonBox(
 			QDialogButtonBox::Ok | QDialogButtonBox::Cancel,
@@ -181,7 +281,25 @@ void ChapterMarkerDock::onSettingsClicked()
 		connect(buttonBox, &QDialogButtonBox::rejected, settingsDialog,
 			&QDialog::reject);
 
-		formLayout->addWidget(buttonBox);
+		mainLayout->addWidget(buttonBox);
+
+		// Connect the checkbox state change to toggle the visibility of the ignored scenes group and adjust the dialog size
+		connect(chapterOnSceneChangeCheckbox, &QCheckBox::toggled,
+			[this](bool checked) {
+				ignoredScenesGroup->setVisible(checked);
+				if (checked) {
+					settingsDialog->setMinimumSize(
+						400,
+						550); // Adjust the minimum size when ignored scenes are visible
+					settingsDialog->setMaximumSize(
+						QWIDGETSIZE_MAX,
+						QWIDGETSIZE_MAX); // Allow resizing
+				} else {
+					settingsDialog->setFixedSize(
+						400,
+						350); // Reset to the fixed size when ignored scenes are hidden
+				}
+			});
 
 		connect(settingsDialog, &QDialog::accepted, [this]() {
 			chapterOnSceneChangeEnabled =
@@ -192,22 +310,64 @@ void ChapterMarkerDock::onSettingsClicked()
 				exportChaptersCheckbox->isChecked();
 			addChapterSourceEnabled =
 				addChapterSourceCheckbox->isChecked();
+			defaultChapterName =
+				defaultChapterNameEdit->text().isEmpty()
+					? "Chapter"
+					: defaultChapterNameEdit
+						  ->text(); // Save the default chapter name
+
+			ignoredScenes.clear();
+			for (int i = 0; i < ignoredScenesListWidget->count();
+			     ++i) {
+				QListWidgetItem *item =
+					ignoredScenesListWidget->item(i);
+				if (item->isSelected()) {
+					ignoredScenes << item->text();
+				}
+			}
 
 			// Update the visibility of the chapter history list based on the setting
-			historyLabel->setVisible(showChapterHistoryEnabled);
-			chapterHistoryList->setVisible(
+			previousChaptersGroup->setVisible(
 				showChapterHistoryEnabled);
 		});
 	}
 
 	if (chapterOnSceneChangeCheckbox && showChapterHistoryCheckbox &&
-	    exportChaptersCheckbox && addChapterSourceCheckbox) {
+	    exportChaptersCheckbox && addChapterSourceCheckbox &&
+	    ignoredScenesListWidget) {
 		chapterOnSceneChangeCheckbox->setChecked(
 			chapterOnSceneChangeEnabled);
 		showChapterHistoryCheckbox->setChecked(
 			showChapterHistoryEnabled);
 		exportChaptersCheckbox->setChecked(exportChaptersEnabled);
 		addChapterSourceCheckbox->setChecked(addChapterSourceEnabled);
+		defaultChapterNameEdit->setText(
+			defaultChapterName); // Initialize the text
+
+		populateIgnoredScenesListWidget();
+		for (int i = 0; i < ignoredScenesListWidget->count(); ++i) {
+			QListWidgetItem *item =
+				ignoredScenesListWidget->item(i);
+			if (ignoredScenes.contains(item->text())) {
+				item->setSelected(true);
+			}
+		}
+
+		// Set initial visibility of ignored scenes group based on the checkbox state
+		ignoredScenesGroup->setVisible(chapterOnSceneChangeEnabled);
+		if (chapterOnSceneChangeEnabled) {
+			settingsDialog->setMinimumSize(
+				400,
+				550); // Adjust the minimum size when ignored scenes are visible
+			settingsDialog->setMaximumSize(
+				QWIDGETSIZE_MAX,
+				QWIDGETSIZE_MAX); // Allow resizing
+		} else {
+			settingsDialog->setFixedSize(
+				400,
+				350); // Reset to the fixed size when ignored scenes are hidden
+		}
+
 		settingsDialog->exec();
 	}
 }
@@ -222,7 +382,10 @@ void ChapterMarkerDock::onSceneChanged()
 			if (scene_name) {
 				QString sceneName =
 					QString::fromUtf8(scene_name);
-				addChapterMarker(sceneName, "Scene Change");
+				if (!ignoredScenes.contains(sceneName)) {
+					addChapterMarker(sceneName,
+							 "Scene Change");
+				}
 				obs_source_release(current_scene);
 			}
 		}
@@ -247,6 +410,10 @@ void ChapterMarkerDock::onRecordingStopped()
 	writeChapterToFile("End", timestamp, "Recording");
 
 	clearChapterHistory();
+	blog(LOG_INFO, "[StreamUP Record Chapter Manager] chapterCount: %d",
+	     chapterCount);
+
+	chapterCount = 1; // Reset chapter count to 1
 }
 
 void ChapterMarkerDock::onHistoryItemSelected()
@@ -302,26 +469,29 @@ void ChapterMarkerDock::setChapterFilePath(const QString &filePath)
 
 QString ChapterMarkerDock::getCurrentRecordingTime() const
 {
-    obs_output_t *output = obs_frontend_get_recording_output();
-    if (!output) {
-        return QString("00:00:00");
-    }
+	obs_output_t *output = obs_frontend_get_recording_output();
+	if (!output) {
+		return QString("00:00:00");
+	}
 
-    uint64_t totalFrames = obs_output_get_total_frames(output);
-    obs_video_info ovi;
-    QString recordingTimeString = "00:00:00";
+	uint64_t totalFrames = obs_output_get_total_frames(output);
+	obs_video_info ovi;
+	QString recordingTimeString = "00:00:00";
 
-    if (obs_get_video_info(&ovi) != 0) {
-        double frameRate = static_cast<double>(ovi.fps_num) / ovi.fps_den;
-        uint64_t totalSeconds = static_cast<uint64_t>(totalFrames / frameRate);
-        QTime recordingTime(0, 0, 0);
-        recordingTime = recordingTime.addSecs(totalSeconds);
-        recordingTimeString = recordingTime.toString("HH:mm:ss");
-    }
+	if (obs_get_video_info(&ovi) != 0) {
+		double frameRate =
+			static_cast<double>(ovi.fps_num) / ovi.fps_den;
+		uint64_t totalSeconds =
+			static_cast<uint64_t>(totalFrames / frameRate);
+		QTime recordingTime(0, 0, 0);
+		recordingTime = recordingTime.addSecs(totalSeconds);
+		recordingTimeString = recordingTime.toString("HH:mm:ss");
+	}
 
-    obs_output_release(output); // Ensure this is always called before returning
+	obs_output_release(
+		output); // Ensure this is always called before returning
 
-    return recordingTimeString;
+	return recordingTimeString;
 }
 
 void ChapterMarkerDock::setAddChapterSourceEnabled(bool enabled)
@@ -376,4 +546,81 @@ void ChapterMarkerDock::addChapterMarker(const QString &chapterName,
 			"Failed to add chapter marker. Ensure the output supports chapter markers.",
 			true);
 	}
+}
+
+void ChapterMarkerDock::onHotkeyTriggered()
+{
+	if (!obs_frontend_recording_active()) {
+		setNoRecordingActive();
+		showFeedbackMessage(
+			"Recording is not active. Chapter marker not added.",
+			true);
+		return;
+	}
+
+	QString chapterName =
+		defaultChapterName + " " + QString::number(chapterCount);
+	addChapterMarker(chapterName, "Hotkey");
+	blog(LOG_INFO, "[StreamUP Record Chapter Manager] chapterCount: %d",
+	     chapterCount);
+
+	chapterCount++; // Increment the chapter count
+}
+
+void ChapterMarkerDock::populateIgnoredScenesComboBox()
+{
+	if (!ignoredScenesComboBox) {
+		return;
+	}
+
+	ignoredScenesComboBox->clear();
+
+	char **scene_names = obs_frontend_get_scene_names();
+	if (scene_names) {
+		for (char **name = scene_names; *name; name++) {
+			ignoredScenesComboBox->addItem(
+				QString::fromUtf8(*name));
+		}
+		bfree(scene_names); // Free the allocated memory
+	}
+}
+
+void ChapterMarkerDock::setIgnoredScenes(const QStringList &scenes)
+{
+	ignoredScenes = scenes;
+	if (ignoredScenesListWidget) {
+		for (int i = 0; i < ignoredScenesListWidget->count(); ++i) {
+			QListWidgetItem *item =
+				ignoredScenesListWidget->item(i);
+			item->setSelected(ignoredScenes.contains(item->text()));
+		}
+	}
+}
+
+QStringList ChapterMarkerDock::getIgnoredScenes() const
+{
+	return ignoredScenes;
+}
+
+void ChapterMarkerDock::populateIgnoredScenesListWidget()
+{
+	if (!ignoredScenesListWidget) {
+		return;
+	}
+
+	ignoredScenesListWidget->clear();
+
+	char **scene_names = obs_frontend_get_scene_names();
+	if (scene_names) {
+		for (char **name = scene_names; *name; name++) {
+			ignoredScenesListWidget->addItem(
+				QString::fromUtf8(*name));
+		}
+		bfree(scene_names); // Free the allocated memory
+	}
+}
+
+void ChapterMarkerDock::updatePreviousChaptersVisibility(bool visible)
+{
+	previousChaptersGroup->setVisible(visible);
 }
