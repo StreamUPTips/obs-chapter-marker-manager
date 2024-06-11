@@ -8,6 +8,9 @@
 #include <obs-module.h>
 #include <QMainWindow>
 #include <QDockWidget>
+#include <QFile>
+#include <QTextStream>
+#include <QFileInfo>
 
 #define QT_UTF8(str) QString::fromUtf8(str)
 #define QT_TO_UTF8(str) str.toUtf8().constData()
@@ -17,6 +20,100 @@ OBS_MODULE_AUTHOR("Andilippi");
 OBS_MODULE_USE_DEFAULT_LOCALE("streamup-record-chapter-manager", "en-US")
 
 static ChapterMarkerDock *dock_widget = nullptr;
+
+static void LoadChapterMarkerDock()
+{
+	const auto main_window =
+		static_cast<QMainWindow *>(obs_frontend_get_main_window());
+	obs_frontend_push_ui_translation(obs_module_get_string);
+
+	if (!dock_widget) {
+		dock_widget = new ChapterMarkerDock(main_window);
+
+		const QString title = QString::fromUtf8(
+			obs_module_text("StreamUP Chapter Marker"));
+		const auto name = "ChapterMarkerDock";
+
+#if LIBOBS_API_VER >= MAKE_SEMANTIC_VERSION(30, 0, 0)
+		obs_frontend_add_dock_by_id(name, title.toUtf8().constData(),
+					    dock_widget);
+#else
+		auto dock = new QDockWidget(main_window);
+		dock->setObjectName(name);
+		dock->setWindowTitle(title);
+		dock->setWidget(dock_widget);
+		dock->setFeatures(QDockWidget::DockWidgetMovable |
+				  QDockWidget::DockWidgetFloatable);
+		dock->setFloating(true);
+		dock->hide();
+		obs_frontend_add_dock(dock);
+#endif
+
+		obs_frontend_pop_ui_translation();
+	}
+}
+
+static void createChapterFile()
+{
+	obs_output_t *output = obs_frontend_get_recording_output();
+	if (!output) {
+		blog(LOG_ERROR,
+		     "[StreamUP Record Chapter Manager] Could not get the recording output.");
+		return;
+	}
+
+	obs_data_t *settings = obs_output_get_settings(output);
+	if (!settings) {
+		blog(LOG_ERROR,
+		     "[StreamUP Record Chapter Manager] Could not get the recording output settings.");
+		obs_output_release(output);
+		return;
+	}
+
+	const char *recording_path = obs_data_get_string(settings, "path");
+	if (!recording_path || strlen(recording_path) == 0) {
+		blog(LOG_ERROR,
+		     "[StreamUP Record Chapter Manager] Could not get the recording output path.");
+		obs_data_release(settings);
+		obs_output_release(output);
+		return;
+	}
+
+	QString outputPath = QString::fromUtf8(recording_path);
+	obs_data_release(settings);
+	obs_output_release(output);
+
+	blog(LOG_INFO, "[StreamUP Record Chapter Manager] Recording path: %s",
+	     QT_TO_UTF8(outputPath));
+
+	QFileInfo fileInfo(outputPath);
+	QString baseName = fileInfo.completeBaseName();
+	QString chapterFilePath =
+		fileInfo.absolutePath() + "/" + baseName + "_chapters.txt";
+
+	QFile file(chapterFilePath);
+	if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+		QTextStream out(&file);
+		out << "Chapter Markers for " << baseName << "\n";
+		file.close();
+		blog(LOG_INFO,
+		     "[StreamUP Record Chapter Manager] Created chapter file: %s",
+		     QT_TO_UTF8(chapterFilePath));
+
+		if (dock_widget) {
+			dock_widget->setChapterFilePath(chapterFilePath);
+			QString timestamp =
+				dock_widget->getCurrentRecordingTime();
+			dock_widget->writeChapterToFile("Start", timestamp,
+							"Recording");
+			dock_widget->addChapterMarker("Start", "Recording");
+		}
+	} else {
+		blog(LOG_ERROR,
+		     "[StreamUP Record Chapter Manager] Failed to create chapter file: %s",
+		     QT_TO_UTF8(chapterFilePath));
+	}
+}
 
 static bool add_chapter_marker(const char *chapter_name)
 {
@@ -56,38 +153,6 @@ static bool add_chapter_marker(const char *chapter_name)
 	return result;
 }
 
-static void LoadChapterMarkerDock()
-{
-	const auto main_window =
-		static_cast<QMainWindow *>(obs_frontend_get_main_window());
-	obs_frontend_push_ui_translation(obs_module_get_string);
-
-	if (!dock_widget) {
-		dock_widget = new ChapterMarkerDock(main_window);
-
-		const QString title = QString::fromUtf8(
-			obs_module_text("StreamUP Chapter Marker"));
-		const auto name = "ChapterMarkerDock";
-
-#if LIBOBS_API_VER >= MAKE_SEMANTIC_VERSION(30, 0, 0)
-		obs_frontend_add_dock_by_id(name, title.toUtf8().constData(),
-					    dock_widget);
-#else
-		auto dock = new QDockWidget(main_window);
-		dock->setObjectName(name);
-		dock->setWindowTitle(title);
-		dock->setWidget(dock_widget);
-		dock->setFeatures(QDockWidget::DockWidgetMovable |
-				  QDockWidget::DockWidgetFloatable);
-		dock->setFloating(true);
-		dock->hide();
-		obs_frontend_add_dock(dock);
-#endif
-
-		obs_frontend_pop_ui_translation();
-	}
-}
-
 static void on_frontend_event(enum obs_frontend_event event, void *)
 {
 	switch (event) {
@@ -95,6 +160,7 @@ static void on_frontend_event(enum obs_frontend_event event, void *)
 		if (dock_widget) {
 			dock_widget->updateCurrentChapterLabel("Start");
 			add_chapter_marker("Start");
+			createChapterFile();
 		}
 		break;
 	case OBS_FRONTEND_EVENT_RECORDING_STOPPED:
