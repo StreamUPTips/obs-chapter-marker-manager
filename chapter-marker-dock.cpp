@@ -1,6 +1,8 @@
 #include "chapter-marker-dock.hpp"
+#include "streamup-record-chapter-manager.hpp"
 #include <obs-frontend-api.h>
 #include <obs-module.h>
+#include <obs-data.h>
 #include <QHBoxLayout>
 #include <QApplication>
 #include <QStyle>
@@ -16,7 +18,7 @@
 
 #define QT_TO_UTF8(str) str.toUtf8().constData()
 
-// Constructor and Destructor
+//--------------------CONSTRUCTOR & DESTRUCTOR--------------------
 ChapterMarkerDock::ChapterMarkerDock(QWidget *parent)
 	: QFrame(parent),
 	  chapterNameEdit(new QLineEdit(this)),
@@ -32,7 +34,7 @@ ChapterMarkerDock::ChapterMarkerDock(QWidget *parent)
 	  addChapterSourceCheckbox(nullptr),
 	  ignoredScenesListWidget(nullptr),
 	  chapterOnSceneChangeEnabled(false),
-	  showChapterHistoryEnabled(true),
+	  showChapterHistoryEnabled(false),
 	  exportChaptersEnabled(false),
 	  addChapterSourceEnabled(false),
 	  chapterHistoryList(new QListWidget(this)),
@@ -45,8 +47,9 @@ ChapterMarkerDock::ChapterMarkerDock(QWidget *parent)
 	setupConnections();
 	// OBS Event Callback
 	setupOBSCallbacks();
-	// Initialize UI States
-	initializeUIStates();
+	// initialise UI States
+	initialiseUIStates();
+
 }
 
 ChapterMarkerDock::~ChapterMarkerDock()
@@ -56,7 +59,7 @@ ChapterMarkerDock::~ChapterMarkerDock()
 	}
 }
 
-// UI Setup Functions
+//--------------------UI SETUP FUNCTIONS--------------------
 void ChapterMarkerDock::setupUI()
 {
 	// Set the frame style
@@ -143,7 +146,7 @@ void ChapterMarkerDock::setupPreviousChaptersGroup(QVBoxLayout *mainLayout)
 	mainLayout->addWidget(previousChaptersGroup);
 }
 
-// Signal Connections
+//--------------------SIGNAL CONNECTIONS--------------------
 void ChapterMarkerDock::setupConnections()
 {
 	connect(chapterNameEdit, &QLineEdit::returnPressed, saveButton,
@@ -164,7 +167,7 @@ void ChapterMarkerDock::setupConnections()
 		[this]() { feedbackLabel->setText(""); });
 }
 
-// OBS Event Callback
+//--------------------OBS EVENT CALLBACK--------------------
 void ChapterMarkerDock::setupOBSCallbacks()
 {
 	obs_frontend_add_event_callback(
@@ -181,14 +184,14 @@ void ChapterMarkerDock::setupOBSCallbacks()
 		this);
 }
 
-// Initialize UI States
-void ChapterMarkerDock::initializeUIStates()
+//--------------------INITIALISE UI STATES--------------------
+void ChapterMarkerDock::initialiseUIStates()
 {
-	// Initialize the visibility of the chapter history based on the default setting
+	// initialise the visibility of the chapter history based on the default setting
 	previousChaptersGroup->setVisible(showChapterHistoryEnabled);
 }
 
-// Event Handlers
+//--------------------EVENT HANDLERS--------------------
 void ChapterMarkerDock::onSaveClicked()
 {
 	if (!obs_frontend_recording_active()) {
@@ -217,8 +220,11 @@ void ChapterMarkerDock::onSettingsClicked()
 {
 	if (!settingsDialog) {
 		settingsDialog = createSettingsDialog();
+		// Connect the accept signal to save settings and close the dialog
+		connect(settingsDialog, &QDialog::accepted, this,
+			&ChapterMarkerDock::saveSettingsAndCloseDialog);
 	}
-	initializeSettingsDialog();
+	initialiseSettingsDialog();
 	settingsDialog->exec();
 }
 
@@ -294,7 +300,7 @@ void ChapterMarkerDock::onHotkeyTriggered()
 	chapterCount++; // Increment the chapter count
 }
 
-// Utility Functions
+//--------------------UTILITY FUNCTIONS--------------------
 QString ChapterMarkerDock::getChapterName() const
 {
 	return chapterNameEdit->text();
@@ -466,7 +472,40 @@ void ChapterMarkerDock::updatePreviousChaptersVisibility(bool visible)
 	previousChaptersGroup->setVisible(visible);
 }
 
-// Create Settings Dialog
+void ChapterMarkerDock::loadSettings()
+{
+    obs_data_t *settings = SaveLoadSettingsCallback(nullptr, false);
+
+    if (settings) {
+        chapterOnSceneChangeEnabled = obs_data_get_bool(settings, "chapter_on_scene_change_enabled");
+        showChapterHistoryEnabled = obs_data_get_bool(settings, "show_chapter_history_enabled");
+        exportChaptersEnabled = obs_data_get_bool(settings, "export_chapters_enabled");
+        addChapterSourceEnabled = obs_data_get_bool(settings, "add_chapter_source_enabled");
+        defaultChapterName = QString::fromUtf8(obs_data_get_string(settings, "default_chapter_name"));
+
+        // Load ignored scenes
+        obs_data_array_t *ignoredScenesArray = obs_data_get_array(settings, "ignored_scenes");
+        if (ignoredScenesArray) {
+            ignoredScenes.clear();
+            size_t numScenes = obs_data_array_count(ignoredScenesArray);
+            for (size_t i = 0; i < numScenes; ++i) {
+                obs_data_t *sceneData = obs_data_array_item(ignoredScenesArray, i);
+                const char *sceneName = obs_data_get_string(sceneData, "scene_name");
+                if (sceneName) {
+                    ignoredScenes << QString::fromUtf8(sceneName);
+                }
+                obs_data_release(sceneData);
+            }
+            obs_data_array_release(ignoredScenesArray);
+        }
+
+	updatePreviousChaptersVisibility(showChapterHistoryEnabled);
+
+        obs_data_release(settings);
+    }
+}
+
+//--------------------CREATE SETTINGS DIALOG--------------------
 QDialog *ChapterMarkerDock::createSettingsDialog()
 {
 	QDialog *dialog = new QDialog(this);
@@ -534,7 +573,7 @@ QDialog *ChapterMarkerDock::createSettingsDialog()
 	return dialog;
 }
 
-// Setup Settings Dialog Groups
+//--------------------SETUP SETTINGS DIALOG GROUPS--------------------
 void ChapterMarkerDock::setupGeneralSettingsGroup(QVBoxLayout *mainLayout)
 {
 	QGroupBox *generalSettingsGroup =
@@ -603,8 +642,68 @@ void ChapterMarkerDock::setupSceneChangeSettingsGroup(QVBoxLayout *mainLayout)
 	mainLayout->addWidget(sceneChangeSettingsGroup);
 }
 
-// Initialize Settings Dialog States
-void ChapterMarkerDock::initializeSettingsDialog()
+void ChapterMarkerDock::saveSettingsAndCloseDialog()
+{
+	static bool isSaving = false;
+
+	if (isSaving) {
+		return;
+	}
+
+	isSaving = true;
+
+	// Create a new obs_data_t object
+	obs_data_t *saveData = obs_data_create();
+
+	// Extract settings from UI elements
+	obs_data_set_bool(saveData, "chapter_on_scene_change_enabled",
+			  chapterOnSceneChangeCheckbox->isChecked());
+	obs_data_set_bool(saveData, "show_chapter_history_enabled",
+			  showChapterHistoryCheckbox->isChecked());
+	obs_data_set_bool(saveData, "export_chapters_enabled",
+			  exportChaptersCheckbox->isChecked());
+	obs_data_set_bool(saveData, "add_chapter_source_enabled",
+			  addChapterSourceCheckbox->isChecked());
+	obs_data_set_string(
+		saveData, "default_chapter_name",
+		defaultChapterNameEdit->text().isEmpty()
+			? "Chapter"
+			: defaultChapterNameEdit->text().toStdString().c_str());
+
+	// Create an array to store ignored scenes
+	obs_data_array_t *ignoredScenesArray = obs_data_array_create();
+
+	// Add ignored scenes to the array
+	for (int i = 0; i < ignoredScenesListWidget->count(); ++i) {
+		QListWidgetItem *item = ignoredScenesListWidget->item(i);
+		if (item->isSelected()) {
+			obs_data_t *sceneData = obs_data_create();
+			obs_data_set_string(sceneData, "scene_name",
+					    item->text().toStdString().c_str());
+			obs_data_array_push_back(ignoredScenesArray, sceneData);
+			obs_data_release(
+				sceneData); // Release after adding to array
+		}
+	}
+
+	// Add the array of ignored scenes to the save data
+	obs_data_set_array(saveData, "ignored_scenes", ignoredScenesArray);
+
+	// Save settings
+	SaveLoadSettingsCallback(saveData, true);
+
+	// Release resources
+	obs_data_array_release(ignoredScenesArray);
+	obs_data_release(saveData);
+
+	// Close the dialog
+	settingsDialog->accept();
+
+	isSaving = false;
+}
+
+//--------------------INITIALISE SETTINGS DIALOG STATES--------------------
+void ChapterMarkerDock::initialiseSettingsDialog()
 {
 	if (chapterOnSceneChangeCheckbox && showChapterHistoryCheckbox &&
 	    exportChaptersCheckbox && addChapterSourceCheckbox &&
@@ -616,7 +715,7 @@ void ChapterMarkerDock::initializeSettingsDialog()
 		exportChaptersCheckbox->setChecked(exportChaptersEnabled);
 		addChapterSourceCheckbox->setChecked(addChapterSourceEnabled);
 		defaultChapterNameEdit->setText(
-			defaultChapterName); // Initialize the text
+			defaultChapterName); // initialise the text
 
 		populateIgnoredScenesListWidget();
 		for (int i = 0; i < ignoredScenesListWidget->count(); ++i) {

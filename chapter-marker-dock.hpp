@@ -1,3 +1,5 @@
+#pragma once
+
 #ifndef CHAPTER_MARKER_DOCK_HPP
 #define CHAPTER_MARKER_DOCK_HPP
 
@@ -41,7 +43,14 @@ public:
 				const QString &chapterSource);
 	void addChapterMarker(const QString &chapterName,
 			      const QString &chapterSource);
+	void loadSettings(); // Add this method declaration
 	bool exportChaptersEnabled;
+	QString chapterFilePath;
+	QString defaultChapterName;
+	QStringList ignoredScenes;
+	bool chapterOnSceneChangeEnabled;
+	bool showChapterHistoryEnabled;
+	bool addChapterSourceEnabled;
 
 private slots:
 	// Event handlers
@@ -52,6 +61,7 @@ private slots:
 	void onHistoryItemSelected();
 	void onHistoryItemDoubleClicked(QListWidgetItem *item);
 	void onHotkeyTriggered();
+	void saveSettingsAndCloseDialog();
 
 private:
 	// UI setup functions
@@ -68,14 +78,14 @@ private:
 	// OBS callback
 	void setupOBSCallbacks();
 
-	// Initialize UI states
-	void initializeUIStates();
+	// initialise UI states
+	void initialiseUIStates();
 
 	// Settings dialog setup functions
 	QDialog *createSettingsDialog();
 	void setupGeneralSettingsGroup(QVBoxLayout *mainLayout);
 	void setupSceneChangeSettingsGroup(QVBoxLayout *mainLayout);
-	void initializeSettingsDialog();
+	void initialiseSettingsDialog();
 
 	// Utility functions
 	void populateIgnoredScenesListWidget();
@@ -103,12 +113,7 @@ private:
 	QGroupBox *ignoredScenesGroup;
 
 	// State variables
-	QString chapterFilePath;
-	QString defaultChapterName;
-	QStringList ignoredScenes;
-	bool chapterOnSceneChangeEnabled;
-	bool showChapterHistoryEnabled;
-	bool addChapterSourceEnabled;
+
 	int chapterCount;
 	QStringList chapters;
 	QStringList timestamps;
