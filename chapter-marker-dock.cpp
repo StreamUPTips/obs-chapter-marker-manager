@@ -167,22 +167,6 @@ void ChapterMarkerDock::setupConnections()
 		[this]() { feedbackLabel->setText(""); });
 }
 
-//--------------------OBS EVENT CALLBACK--------------------
-void ChapterMarkerDock::setupOBSCallbacks()
-{
-	obs_frontend_add_event_callback(
-		[](obs_frontend_event event, void *ptr) {
-			auto dock = static_cast<ChapterMarkerDock *>(ptr);
-			if (event == OBS_FRONTEND_EVENT_SCENE_CHANGED ||
-			    event == OBS_FRONTEND_EVENT_SCENE_LIST_CHANGED) {
-				dock->onSceneChanged();
-			} else if (event ==
-				   OBS_FRONTEND_EVENT_RECORDING_STOPPED) {
-				dock->onRecordingStopped();
-			}
-		},
-		this);
-}
 
 //--------------------INITIALISE UI STATES--------------------
 void ChapterMarkerDock::initialiseUIStates()
@@ -284,24 +268,6 @@ void ChapterMarkerDock::onHistoryItemDoubleClicked(QListWidgetItem *item)
 	}
 }
 
-void ChapterMarkerDock::onHotkeyTriggered()
-{
-	if (!obs_frontend_recording_active()) {
-		setNoRecordingActive();
-		showFeedbackMessage(
-			"Recording is not active. Chapter marker not added.",
-			true);
-		return;
-	}
-
-	QString chapterName =
-		defaultChapterName + " " + QString::number(chapterCount);
-	addChapterMarker(chapterName, "Hotkey");
-	blog(LOG_INFO, "[StreamUP Record Chapter Manager] chapterCount: %d",
-	     chapterCount);
-
-	chapterCount++; // Increment the chapter count
-}
 
 //--------------------UTILITY FUNCTIONS--------------------
 QString ChapterMarkerDock::getChapterName() const
@@ -744,4 +710,21 @@ void ChapterMarkerDock::initialiseSettingsDialog()
 				350); // Reset to the fixed size when ignored scenes are hidden
 		}
 	}
+}
+
+//--------------------OBS EVENT CALLBACK--------------------
+void ChapterMarkerDock::setupOBSCallbacks()
+{
+	obs_frontend_add_event_callback(
+		[](obs_frontend_event event, void *ptr) {
+			auto dock = static_cast<ChapterMarkerDock *>(ptr);
+			if (event == OBS_FRONTEND_EVENT_SCENE_CHANGED ||
+			    event == OBS_FRONTEND_EVENT_SCENE_LIST_CHANGED) {
+				dock->onSceneChanged();
+			} else if (event ==
+				   OBS_FRONTEND_EVENT_RECORDING_STOPPED) {
+				dock->onRecordingStopped();
+			}
+		},
+		this);
 }

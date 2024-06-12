@@ -14,6 +14,7 @@
 #include <QGroupBox>
 #include <QDialog>
 #include <QStringList>
+#include <obs-frontend-api.h>
 
 class ChapterMarkerDock : public QFrame {
 	Q_OBJECT
@@ -43,7 +44,7 @@ public:
 				const QString &chapterSource);
 	void addChapterMarker(const QString &chapterName,
 			      const QString &chapterSource);
-	void loadSettings(); // Add this method declaration
+	void loadSettings();
 	bool exportChaptersEnabled;
 	QString chapterFilePath;
 	QString defaultChapterName;
@@ -51,47 +52,35 @@ public:
 	bool chapterOnSceneChangeEnabled;
 	bool showChapterHistoryEnabled;
 	bool addChapterSourceEnabled;
+	int chapterCount;
 
-private slots:
-	// Event handlers
+
+public slots:
 	void onSaveClicked();
 	void onSettingsClicked();
 	void onSceneChanged();
 	void onRecordingStopped();
 	void onHistoryItemSelected();
 	void onHistoryItemDoubleClicked(QListWidgetItem *item);
-	void onHotkeyTriggered();
 	void saveSettingsAndCloseDialog();
 
 private:
-	// UI setup functions
 	void setupUI();
 	void setupCurrentChapterLayout(QVBoxLayout *mainLayout);
 	void setupChapterNameEdit(QVBoxLayout *mainLayout);
 	void setupSaveButtonLayout(QVBoxLayout *mainLayout);
 	void setupFeedbackLabel(QVBoxLayout *mainLayout);
 	void setupPreviousChaptersGroup(QVBoxLayout *mainLayout);
-
-	// Signal connections
 	void setupConnections();
-
-	// OBS callback
 	void setupOBSCallbacks();
-
-	// initialise UI states
 	void initialiseUIStates();
-
-	// Settings dialog setup functions
 	QDialog *createSettingsDialog();
 	void setupGeneralSettingsGroup(QVBoxLayout *mainLayout);
 	void setupSceneChangeSettingsGroup(QVBoxLayout *mainLayout);
 	void initialiseSettingsDialog();
-
-	// Utility functions
 	void populateIgnoredScenesListWidget();
 	void updatePreviousChaptersVisibility(bool visible);
 
-	// UI components
 	QLineEdit *chapterNameEdit;
 	QPushButton *saveButton;
 	QPushButton *settingsButton;
@@ -102,7 +91,6 @@ private:
 	QListWidget *chapterHistoryList;
 	QGroupBox *previousChaptersGroup;
 
-	// Settings dialog components
 	QDialog *settingsDialog;
 	QLineEdit *defaultChapterNameEdit;
 	QCheckBox *showChapterHistoryCheckbox;
@@ -112,9 +100,6 @@ private:
 	QListWidget *ignoredScenesListWidget;
 	QGroupBox *ignoredScenesGroup;
 
-	// State variables
-
-	int chapterCount;
 	QStringList chapters;
 	QStringList timestamps;
 };

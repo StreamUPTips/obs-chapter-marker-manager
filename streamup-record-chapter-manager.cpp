@@ -140,7 +140,46 @@ static void on_frontend_event(enum obs_frontend_event event, void *)
 }
 
 //--------------------HOTKEY HANDLERS--------------------
+obs_hotkey_id addDefaultChapterMarkerHotkey = OBS_INVALID_HOTKEY_ID;
 
+static void frontend_save_load(obs_data_t *save_data, bool saving, void *)
+{
+	if (saving) {
+		obs_data_array_t *hotkey_save_array =
+			obs_hotkey_save(addDefaultChapterMarkerHotkey);
+		obs_data_set_array(save_data, "addDefaultChapterMarkerHotkey",
+				   hotkey_save_array);
+		obs_data_array_release(hotkey_save_array);
+	} else {
+		obs_data_array_t *hotkey_save_array =
+			obs_data_get_array(save_data, "addDefaultChapterMarkerHotkey");
+		obs_hotkey_load(addDefaultChapterMarkerHotkey,
+				hotkey_save_array);
+		obs_data_array_release(hotkey_save_array);
+	}
+}
+
+void onHotkeyTriggered(void *data, obs_hotkey_id id,
+					  obs_hotkey_t *hotkey, bool pressed)
+{
+	if (!pressed)
+		return;
+	if (!obs_frontend_recording_active()) {
+		dock_widget->setNoRecordingActive();
+		dock_widget->showFeedbackMessage(
+			"Recording is not active. Chapter marker not added.",
+			true);
+		return;
+	}
+
+	QString chapterName = dock_widget->defaultChapterName + " " +
+			      QString::number(dock_widget->chapterCount);
+	dock_widget->addChapterMarker(chapterName, "Hotkey");
+	blog(LOG_INFO, "[StreamUP Record Chapter Manager] chapterCount: %d",
+	     dock_widget->chapterCount);
+
+	dock_widget->chapterCount++; // Increment the chapter count
+}
 
 //--------------------MENU HELPERS--------------------
 obs_data_t *SaveLoadSettingsCallback(obs_data_t *save_data, bool saving)
@@ -192,10 +231,22 @@ obs_data_t *SaveLoadSettingsCallback(obs_data_t *save_data, bool saving)
 }
 
 //--------------------STARTUP COMMANDS--------------------
+static void RegisterHotkeys(ChapterMarkerDock *dock)
+{
+	addDefaultChapterMarkerHotkey = obs_hotkey_register_frontend(
+		"addDefaultChapterMarker",
+		obs_module_text("AddDefaultChapterMarker"), onHotkeyTriggered,
+		dock);
+}
+
 bool obs_module_load()
 {
 	blog(LOG_INFO, "[StreamUP Record Chapter Manager] loaded version %s",
 	     PROJECT_VERSION);
+
+	RegisterHotkeys(dock_widget);
+	obs_frontend_add_save_callback(frontend_save_load, nullptr);
+
 
 	obs_frontend_add_event_callback(on_frontend_event, nullptr);
 
@@ -219,7 +270,10 @@ void obs_module_post_load(void)
 //--------------------EXIT COMMANDS--------------------
 void obs_module_unload()
 {
+	obs_frontend_remove_event_callback(on_frontend_event, nullptr);
 
+	obs_frontend_remove_save_callback(frontend_save_load, nullptr);
+	obs_hotkey_unregister(addDefaultChapterMarkerHotkey);
 }
 
 MODULE_EXPORT const char *obs_module_description(void)
