@@ -9,6 +9,7 @@
 #include <QMainWindow>
 #include <QDockWidget>
 #include <QFile>
+#include <QDir>
 #include <QTextStream>
 #include <QFileInfo>
 
@@ -35,7 +36,7 @@ static void LoadChapterMarkerDock()
 		const auto name = "ChapterMarkerDock";
 
 #if LIBOBS_API_VER >= MAKE_SEMANTIC_VERSION(30, 0, 0)
-		obs_frontend_add_dock_by_id(name, title.toUtf8().constData(),
+		obs_frontend_add_dock_by_id(name, QT_TO_UTF8(title),
 					    dock_widget);
 #else
 		auto dock = new QDockWidget(main_window);
@@ -137,16 +138,90 @@ static void on_frontend_event(enum obs_frontend_event event, void *)
 	}
 }
 
-bool obs_module_load()
+//--------------------HOTKEY HANDLERS--------------------
+obs_hotkey_id addDefaultChapterMarkerHotkey = OBS_INVALID_HOTKEY_ID;
+
+static void SaveLoadHotkeysCallback(obs_data_t *save_data, bool saving,
+				    void *private_data)
 {
-	blog(LOG_INFO, "[StreamUP Record Chapter Manager] loaded version %s",
-	     PROJECT_VERSION);
+	UNUSED_PARAMETER(private_data);
 
-	obs_frontend_add_event_callback(on_frontend_event, nullptr);
+	char *configPath = obs_module_config_path("hotkeys.json");
 
+	// Ensure directory exists
+	QFileInfo configFileInfo(configPath);
+	QDir configDir = configFileInfo.dir();
+	if (!configDir.exists()) {
+		if (!configDir.mkpath(".")) {
+			blog(LOG_ERROR,
+			     "[StreamUP Record Chapter Manager] Failed to create config directory: %s",
+			     QT_TO_UTF8(configDir.absolutePath()));
+			bfree(configPath);
+			return;
+		}
+	}
+
+	if (saving) {
+		obs_data_array_t *hotkey_array = obs_data_array_create();
+
+		obs_data_t *hotkey_obj = obs_data_create();
+		obs_data_array_t *hotkey_data_array =
+			obs_hotkey_save(addDefaultChapterMarkerHotkey);
+		obs_data_set_array(hotkey_obj, "addDefaultChapterMarkerHotkey",
+				   hotkey_data_array);
+		obs_data_array_release(hotkey_data_array);
+
+		obs_data_array_push_back(hotkey_array, hotkey_obj);
+		obs_data_release(hotkey_obj);
+
+		obs_data_set_array(save_data, "addDefaultChapterMarkerHotkey",
+				   hotkey_array);
+		obs_data_array_release(hotkey_array);
+
+		if (obs_data_save_json(save_data, configPath)) {
+			blog(LOG_INFO,
+			     "[StreamUP Record Chapter Manager] Hotkey settings saved to %s",
+			     configPath);
+		} else {
+			blog(LOG_ERROR,
+			     "[StreamUP Record Chapter Manager] Failed to save hotkey settings to file %s.",
+			     configPath);
+		}
+	} else {
+		obs_data_t *load_data =
+			obs_data_create_from_json_file(configPath);
+
+		if (load_data) {
+			obs_data_array_t *hotkey_array = obs_data_get_array(
+				load_data, "addDefaultChapterMarkerHotkey");
+			if (hotkey_array) {
+				obs_hotkey_load(addDefaultChapterMarkerHotkey,
+						hotkey_array);
+				obs_data_array_release(hotkey_array);
+			} else {
+				blog(LOG_WARNING,
+				     "[StreamUP Record Chapter Manager] No hotkey array found in %s",
+				     configPath);
+			}
+
+			obs_data_release(load_data);
+		} else {
+			blog(LOG_WARNING,
+			     "[StreamUP Record Chapter Manager] Failed to load hotkey settings from %s",
+			     configPath);
+		}
+	}
+
+	bfree(configPath);
+}
+
+//--------------------STARTUP COMMANDS--------------------
+static void RegisterHotkeys()
+{
 	// Register a hotkey to add chapter markers
-	obs_hotkey_id hotkey_id = obs_hotkey_register_frontend(
-		"add_chapter_marker", "Add Chapter Marker",
+	addDefaultChapterMarkerHotkey = obs_hotkey_register_frontend(
+		"addDefaultChapterMarkerHotkey",
+		"Add Default Chapter Marker (StreamUP)",
 		[](void *data, obs_hotkey_id id, obs_hotkey_t *hotkey,
 		   bool pressed) {
 			if (pressed) {
@@ -160,8 +235,19 @@ bool obs_module_load()
 			}
 		},
 		nullptr);
+}
 
-	// Create the dock widget
+bool obs_module_load()
+{
+	blog(LOG_INFO, "[StreamUP Record Chapter Manager] loaded version %s",
+	     PROJECT_VERSION);
+
+	obs_frontend_add_event_callback(on_frontend_event, nullptr);
+
+	RegisterHotkeys();
+	obs_frontend_add_save_callback(SaveLoadHotkeysCallback, nullptr);
+	SaveLoadHotkeysCallback(nullptr, false, nullptr);
+
 	LoadChapterMarkerDock();
 
 	return true;
@@ -169,7 +255,13 @@ bool obs_module_load()
 
 void obs_module_post_load(void) {}
 
-void obs_module_unload() {}
+//--------------------EXIT COMMANDS--------------------
+void obs_module_unload()
+{
+	obs_frontend_remove_save_callback(SaveLoadHotkeysCallback, nullptr);
+
+	obs_hotkey_unregister(addDefaultChapterMarkerHotkey);
+}
 
 MODULE_EXPORT const char *obs_module_description(void)
 {
