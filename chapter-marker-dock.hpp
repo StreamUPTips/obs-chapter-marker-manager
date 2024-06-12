@@ -2,19 +2,16 @@
 #define CHAPTER_MARKER_DOCK_HPP
 
 #include <QFrame>
-#include <QGroupBox>
 #include <QLineEdit>
 #include <QPushButton>
-#include <QVBoxLayout>
 #include <QLabel>
 #include <QTimer>
-#include <QCheckBox>
-#include <QDialog>
-#include <QDialogButtonBox>
-#include <QFormLayout>
+#include <QVBoxLayout>
 #include <QListWidget>
-#include <QDateTime>
-#include <QComboBox>
+#include <QCheckBox>
+#include <QGroupBox>
+#include <QDialog>
+#include <QStringList>
 
 class ChapterMarkerDock : public QFrame {
 	Q_OBJECT
@@ -23,41 +20,68 @@ public:
 	ChapterMarkerDock(QWidget *parent = nullptr);
 	~ChapterMarkerDock();
 
+	// Public interface
 	QString getChapterName() const;
+	void setChapterFilePath(const QString &filePath);
+	void setAddChapterSourceEnabled(bool enabled);
+	bool isAddChapterSourceEnabled() const;
+	void setIgnoredScenes(const QStringList &scenes);
+	QStringList getIgnoredScenes() const;
+	bool isExportChaptersEnabled() const;
+
+	QString getDefaultChapterName() const { return defaultChapterName; }
+
+	QString getCurrentRecordingTime() const;
 	void updateCurrentChapterLabel(const QString &chapterName);
 	void setNoRecordingActive();
 	void showFeedbackMessage(const QString &message, bool isError);
-	void setChapterFilePath(const QString &filePath);
+	void clearChapterHistory();
 	void writeChapterToFile(const QString &chapterName,
 				const QString &timestamp,
 				const QString &chapterSource);
-	QString getCurrentRecordingTime() const;
 	void addChapterMarker(const QString &chapterName,
 			      const QString &chapterSource);
-	void clearChapterHistory();
-	void setAddChapterSourceEnabled(bool enabled);
-	bool isAddChapterSourceEnabled() const;
 	bool exportChaptersEnabled;
-	void setIgnoredScenes(const QStringList &scenes);
-	QStringList getIgnoredScenes() const;
-	void populateIgnoredScenesListWidget();
-	void updatePreviousChaptersVisibility(bool visible);
-	void onHotkeyTriggered(); // Declare the hotkey-triggered function
-	QString getDefaultChapterName() const
-	{
-		return defaultChapterName;
-	} 
-
 
 private slots:
+	// Event handlers
 	void onSaveClicked();
 	void onSettingsClicked();
 	void onSceneChanged();
 	void onRecordingStopped();
 	void onHistoryItemSelected();
 	void onHistoryItemDoubleClicked(QListWidgetItem *item);
+	void onHotkeyTriggered();
 
 private:
+	// UI setup functions
+	void setupUI();
+	void setupCurrentChapterLayout(QVBoxLayout *mainLayout);
+	void setupChapterNameEdit(QVBoxLayout *mainLayout);
+	void setupSaveButtonLayout(QVBoxLayout *mainLayout);
+	void setupFeedbackLabel(QVBoxLayout *mainLayout);
+	void setupPreviousChaptersGroup(QVBoxLayout *mainLayout);
+
+	// Signal connections
+	void setupConnections();
+
+	// OBS callback
+	void setupOBSCallbacks();
+
+	// Initialize UI states
+	void initializeUIStates();
+
+	// Settings dialog setup functions
+	QDialog *createSettingsDialog();
+	void setupGeneralSettingsGroup(QVBoxLayout *mainLayout);
+	void setupSceneChangeSettingsGroup(QVBoxLayout *mainLayout);
+	void initializeSettingsDialog();
+
+	// Utility functions
+	void populateIgnoredScenesListWidget();
+	void updatePreviousChaptersVisibility(bool visible);
+
+	// UI components
 	QLineEdit *chapterNameEdit;
 	QPushButton *saveButton;
 	QPushButton *settingsButton;
@@ -65,32 +89,29 @@ private:
 	QLabel *currentChapterNameLabel;
 	QLabel *feedbackLabel;
 	QTimer feedbackTimer;
+	QListWidget *chapterHistoryList;
+	QGroupBox *previousChaptersGroup;
 
+	// Settings dialog components
 	QDialog *settingsDialog;
-	QCheckBox *chapterOnSceneChangeCheckbox;
+	QLineEdit *defaultChapterNameEdit;
 	QCheckBox *showChapterHistoryCheckbox;
 	QCheckBox *exportChaptersCheckbox;
+	QCheckBox *addChapterSourceCheckbox;
+	QCheckBox *chapterOnSceneChangeCheckbox;
+	QListWidget *ignoredScenesListWidget;
+	QGroupBox *ignoredScenesGroup;
+
+	// State variables
+	QString chapterFilePath;
+	QString defaultChapterName;
+	QStringList ignoredScenes;
 	bool chapterOnSceneChangeEnabled;
 	bool showChapterHistoryEnabled;
-	QString chapterFilePath;
-	QCheckBox *addChapterSourceCheckbox;
 	bool addChapterSourceEnabled;
-	QComboBox *ignoredScenesComboBox;
-	QStringList ignoredScenes;
-	void populateIgnoredScenesComboBox();
-	QListWidget *ignoredScenesListWidget;
-
-	QGroupBox *previousChaptersGroup; // GroupBox for Previous Chapters
-	QGroupBox *ignoredScenesGroup;    // GroupBox for Ignored Scenes
-
-	QListWidget *chapterHistoryList;
-
-	QStringList chapters;   // List of chapters
-	QStringList timestamps; // List of timestamps
-
-	QLineEdit *defaultChapterNameEdit;
-	QString defaultChapterName;
-	int chapterCount; // Add this member variable to keep track of the chapter count
+	int chapterCount;
+	QStringList chapters;
+	QStringList timestamps;
 };
 
 #endif // CHAPTER_MARKER_DOCK_HPP

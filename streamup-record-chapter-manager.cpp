@@ -169,9 +169,7 @@ bool obs_module_load()
 
 void obs_module_post_load(void) {}
 
-void obs_module_unload()
-{
-}
+void obs_module_unload() {}
 
 MODULE_EXPORT const char *obs_module_description(void)
 {
