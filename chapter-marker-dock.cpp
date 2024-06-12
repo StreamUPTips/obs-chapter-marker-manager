@@ -205,15 +205,18 @@ void ChapterMarkerDock::onSaveClicked()
 	}
 
 	QString chapterName = getChapterName();
-	if (!chapterName.isEmpty()) {
-		addChapterMarker(chapterName, "Manual");
-		chapterNameEdit->clear();
-	} else {
-		blog(LOG_WARNING,
-		     "[StreamUP Record Chapter Manager] Chapter name is empty. Marker not added.");
-		showFeedbackMessage("Chapter name is empty. Marker not added.",
-				    true);
+	if (chapterName.isEmpty()) {
+		// Use the default chapter name if the user did not provide one
+		chapterName = defaultChapterName + " " +
+			      QString::number(chapterCount);
+		chapterCount++; // Increment the chapter count
 	}
+
+	addChapterMarker(chapterName, "Manual");
+	blog(LOG_INFO,
+	     "[StreamUP Record Chapter Manager] Chapter marker added with name: %s",
+	     chapterName.toStdString().c_str());
+	chapterNameEdit->clear();
 }
 
 void ChapterMarkerDock::onSettingsClicked()
