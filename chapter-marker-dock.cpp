@@ -70,6 +70,7 @@ void ChapterMarkerDock::setupUI()
 
 	QVBoxLayout *mainLayout = new QVBoxLayout(this);
 	mainLayout->setAlignment(Qt::AlignTop | Qt::AlignLeft);
+	mainLayout->setSizeConstraint(QLayout::SetMinimumSize);
 
 	setupCurrentChapterLayout(mainLayout);
 	setupChapterNameEdit(mainLayout);
@@ -88,6 +89,8 @@ void ChapterMarkerDock::setupCurrentChapterLayout(QVBoxLayout *mainLayout)
 	currentChapterTextLabel->setAlignment(Qt::AlignTop | Qt::AlignLeft);
 	currentChapterNameLabel->setAlignment(Qt::AlignTop | Qt::AlignLeft);
 	currentChapterNameLabel->setWordWrap(true);
+	currentChapterNameLabel->setSizePolicy(QSizePolicy::Expanding,
+					       QSizePolicy::Preferred);
 	currentChapterNameLabel->setStyleSheet("color: red;");
 
 	chapterLabelLayout->addWidget(currentChapterTextLabel);
@@ -136,7 +139,6 @@ void ChapterMarkerDock::setupFeedbackLabel(QVBoxLayout *mainLayout)
 {
 	feedbackLabel->setStyleSheet("color: green;");
 	feedbackLabel->setWordWrap(true);
-	feedbackLabel->setFixedWidth(300);
 	mainLayout->addWidget(feedbackLabel);
 }
 
@@ -299,7 +301,6 @@ void ChapterMarkerDock::showFeedbackMessage(const QString &message,
 					    bool isError)
 {
 	feedbackLabel->setWordWrap(true);
-	feedbackLabel->setFixedWidth(300);
 	feedbackLabel->setText(message);
 	feedbackLabel->setStyleSheet(isError ? "color: red;" : "color: green;");
 	feedbackTimer.start();
