@@ -108,8 +108,6 @@ static void createChapterFile()
 
 		dock_widget->setChapterFilePath(chapterFilePath);
 		QString timestamp = dock_widget->getCurrentRecordingTime();
-		dock_widget->writeChapterToFile("Start", timestamp,
-						"Recording");
 		dock_widget->addChapterMarker("Start", "Recording");
 	} else {
 		blog(LOG_ERROR,
@@ -151,16 +149,16 @@ static void frontend_save_load(obs_data_t *save_data, bool saving, void *)
 				   hotkey_save_array);
 		obs_data_array_release(hotkey_save_array);
 	} else {
-		obs_data_array_t *hotkey_save_array =
-			obs_data_get_array(save_data, "addDefaultChapterMarkerHotkey");
+		obs_data_array_t *hotkey_save_array = obs_data_get_array(
+			save_data, "addDefaultChapterMarkerHotkey");
 		obs_hotkey_load(addDefaultChapterMarkerHotkey,
 				hotkey_save_array);
 		obs_data_array_release(hotkey_save_array);
 	}
 }
 
-void onHotkeyTriggered(void *data, obs_hotkey_id id,
-					  obs_hotkey_t *hotkey, bool pressed)
+void onHotkeyTriggered(void *data, obs_hotkey_id id, obs_hotkey_t *hotkey,
+		       bool pressed)
 {
 	if (!pressed)
 		return;
@@ -189,7 +187,8 @@ obs_data_t *SaveLoadSettingsCallback(obs_data_t *save_data, bool saving)
 
 	if (saving) {
 		if (obs_data_save_json(save_data, configPath)) {
-			blog(LOG_INFO, "[StreamUP Record Chapter Manager] Settings saved to %s",
+			blog(LOG_INFO,
+			     "[StreamUP Record Chapter Manager] Settings saved to %s",
 			     configPath);
 		} else {
 			blog(LOG_WARNING,
@@ -201,17 +200,20 @@ obs_data_t *SaveLoadSettingsCallback(obs_data_t *save_data, bool saving)
 		if (!data) {
 			blog(LOG_INFO,
 			     "[StreamUP Record Chapter Manager] Settings not found. Creating default settings...");
-			os_mkdirs(obs_module_config_path(""));
+
+			char *dirPath = obs_module_config_path("");
+			os_mkdirs(dirPath);
+			bfree(dirPath);
+
 			data = obs_data_create();
-			obs_data_set_string(data,
-						    "default_chapter_name",
-						    "Chapter");
-			obs_data_set_bool(
-				data, "export_chapters_enabled", false);
+			obs_data_set_string(data, "default_chapter_name",
+					    "Chapter");
+			obs_data_set_bool(data, "export_chapters_enabled",
+					  false);
 			obs_data_set_bool(
 				data, "chapter_on_scene_change_enabled", false);
-			obs_data_set_bool(
-				data, "show_chapter_history_enabled", false);
+			obs_data_set_bool(data, "show_chapter_history_enabled",
+					  false);
 
 			if (obs_data_save_json(data, configPath)) {
 				blog(LOG_INFO,
@@ -221,6 +223,9 @@ obs_data_t *SaveLoadSettingsCallback(obs_data_t *save_data, bool saving)
 				blog(LOG_WARNING,
 				     "[StreamUP Record Chapter Manager] Failed to save default settings to file.");
 			}
+
+			obs_data_release(data);
+			data = obs_data_create_from_json_file(configPath);
 		} else {
 			blog(LOG_INFO,
 			     "[StreamUP Record Chapter Manager] Settings loaded successfully from %s",
@@ -232,14 +237,13 @@ obs_data_t *SaveLoadSettingsCallback(obs_data_t *save_data, bool saving)
 	return data;
 }
 
-
 //--------------------STARTUP COMMANDS--------------------
-static void RegisterHotkeys(ChapterMarkerDock *dock)
+static void RegisterHotkeys()
 {
 	addDefaultChapterMarkerHotkey = obs_hotkey_register_frontend(
 		"addDefaultChapterMarker",
 		obs_module_text("AddDefaultChapterMarker"), onHotkeyTriggered,
-		dock);
+		dock_widget);
 }
 
 bool obs_module_load()
@@ -247,24 +251,24 @@ bool obs_module_load()
 	blog(LOG_INFO, "[StreamUP Record Chapter Manager] loaded version %s",
 	     PROJECT_VERSION);
 
-	RegisterHotkeys(dock_widget);
+	RegisterHotkeys();
 	obs_frontend_add_save_callback(frontend_save_load, nullptr);
-
-
 	obs_frontend_add_event_callback(on_frontend_event, nullptr);
 
 	LoadChapterMarkerDock();
+
+	obs_data_t *settings = SaveLoadSettingsCallback(nullptr, false);
+
+	if (settings) {
+		dock_widget->applySettings(settings);
+		obs_data_release(settings);
+	}
 
 	return true;
 }
 
 void obs_module_post_load(void)
 {
-	if (dock_widget) {
-		obs_data_t *settings = SaveLoadSettingsCallback(nullptr, false);
-
-		obs_data_release(settings);
-	}
 
 }
 

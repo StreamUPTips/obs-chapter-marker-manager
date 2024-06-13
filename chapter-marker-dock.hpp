@@ -52,10 +52,11 @@ public:
 	bool showChapterHistoryEnabled;
 	bool addChapterSourceEnabled;
 	int chapterCount;
+	void applySettings(obs_data_t *settings);
 
 
 public slots:
-	void onSaveClicked();
+	void onAddChapterMarkerButton();
 	void onSettingsClicked();
 	void onSceneChanged();
 	void onRecordingStopped();

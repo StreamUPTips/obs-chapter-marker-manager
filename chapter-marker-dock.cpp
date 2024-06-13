@@ -152,7 +152,7 @@ void ChapterMarkerDock::setupConnections()
 	connect(chapterNameEdit, &QLineEdit::returnPressed, saveButton,
 		&QPushButton::click);
 	connect(saveButton, &QPushButton::clicked, this,
-		&ChapterMarkerDock::onSaveClicked);
+		&ChapterMarkerDock::onAddChapterMarkerButton);
 	connect(settingsButton, &QPushButton::clicked, this,
 		&ChapterMarkerDock::onSettingsClicked);
 
@@ -167,7 +167,6 @@ void ChapterMarkerDock::setupConnections()
 		[this]() { feedbackLabel->setText(""); });
 }
 
-
 //--------------------INITIALISE UI STATES--------------------
 void ChapterMarkerDock::initialiseUIStates()
 {
@@ -176,7 +175,7 @@ void ChapterMarkerDock::initialiseUIStates()
 }
 
 //--------------------EVENT HANDLERS--------------------
-void ChapterMarkerDock::onSaveClicked()
+void ChapterMarkerDock::onAddChapterMarkerButton()
 {
 	if (!obs_frontend_recording_active()) {
 		blog(LOG_WARNING,
@@ -359,11 +358,6 @@ QString ChapterMarkerDock::getCurrentRecordingTime() const
 		output); // Ensure this is always called before returning
 
 	return recordingTimeString;
-}
-
-void ChapterMarkerDock::setAddChapterSourceEnabled(bool enabled)
-{
-	addChapterSourceEnabled = enabled;
 }
 
 bool ChapterMarkerDock::isAddChapterSourceEnabled() const
@@ -640,7 +634,7 @@ void ChapterMarkerDock::initialiseSettingsDialog()
 		exportChaptersCheckbox->setChecked(exportChaptersEnabled);
 		addChapterSourceCheckbox->setChecked(addChapterSourceEnabled);
 		defaultChapterNameEdit->setText(
-			defaultChapterName); // initialise the text
+			defaultChapterName);
 
 		populateIgnoredScenesListWidget();
 		for (int i = 0; i < ignoredScenesListWidget->count(); ++i) {
@@ -683,4 +677,46 @@ void ChapterMarkerDock::setupOBSCallbacks()
 			}
 		},
 		this);
+}
+
+//--------------------SET SETTINGS--------------------
+void ChapterMarkerDock::setAddChapterSourceEnabled(bool enabled)
+{
+	addChapterSourceEnabled = enabled;
+}
+
+void ChapterMarkerDock::applySettings(obs_data_t *settings)
+{
+	chapterOnSceneChangeEnabled =
+		obs_data_get_bool(settings, "chapter_on_scene_change_enabled");
+	showChapterHistoryEnabled =
+		obs_data_get_bool(settings, "show_chapter_history_enabled");
+	exportChaptersEnabled =
+		obs_data_get_bool(settings, "export_chapters_enabled");
+	addChapterSourceEnabled =
+		obs_data_get_bool(settings, "add_chapter_source_enabled");
+	defaultChapterName = QString::fromUtf8(
+		obs_data_get_string(settings, "default_chapter_name"));
+
+	// Populate the ignored scenes list from the settings
+	ignoredScenes.clear();
+	obs_data_array_t *ignoredScenesArray =
+		obs_data_get_array(settings, "ignored_scenes");
+	if (ignoredScenesArray) {
+		size_t count = obs_data_array_count(ignoredScenesArray);
+		for (size_t i = 0; i < count; ++i) {
+			obs_data_t *sceneData =
+				obs_data_array_item(ignoredScenesArray, i);
+			const char *sceneName =
+				obs_data_get_string(sceneData, "scene_name");
+			if (sceneName) {
+				ignoredScenes << QString::fromUtf8(sceneName);
+			}
+			obs_data_release(sceneData);
+		}
+		obs_data_array_release(ignoredScenesArray);
+	}
+
+	// Update UI states based on the loaded settings
+	initialiseUIStates();
 }
