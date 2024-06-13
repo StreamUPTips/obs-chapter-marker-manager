@@ -265,14 +265,13 @@ bool obs_module_load()
 		obs_data_release(settings);
 	}
 
-	chapterMarkerDock->onAnnotationClicked(true);
 
 	return true;
 }
 
 void obs_module_post_load(void)
 {
-
+	chapterMarkerDock->onAnnotationClicked(true);
 }
 
 //--------------------EXIT COMMANDS--------------------

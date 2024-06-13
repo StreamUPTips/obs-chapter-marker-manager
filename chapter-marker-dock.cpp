@@ -633,6 +633,13 @@ void ChapterMarkerDock::saveSettingsAndCloseDialog()
 	obs_data_array_release(ignoredScenesArray);
 	obs_data_release(saveData);
 
+	// Check if export chapters is disabled and annotation dock exists
+	if (!exportChaptersCheckbox->isChecked() && annotationDock) {
+		const char *dock_id = "AnnotationDock";
+		obs_frontend_remove_dock(dock_id);
+		annotationDock = nullptr;
+	}
+
 	// Close the dialog
 	settingsDialog->accept();
 }
@@ -776,13 +783,15 @@ void ChapterMarkerDock::onAnnotationClicked(bool startup)
 #endif
 
 		obs_frontend_pop_ui_translation();
-	} else {
-		// If the dock already exists, show it and bring it to the front
+	}
+
+	// Show and raise the dock whether it was just created or already existed
+	if (!startup)
+	{
 		annotationDock->parentWidget()->show();
 		annotationDock->parentWidget()->raise();
 	}
 }
-
 void ChapterMarkerDock::setAnnotationDock(AnnotationDock *dock)
 {
 	annotationDock = dock;
