@@ -55,6 +55,9 @@ public:
 	void applySettings(obs_data_t *settings);
 
 	void setAnnotationDock(AnnotationDock *dock);
+	void writeAnnotationToFile(const QString &chapterName,
+				   const QString &timestamp,
+				   const QString &chapterSource);
 
 public slots:
 	void onAddChapterMarkerButton();

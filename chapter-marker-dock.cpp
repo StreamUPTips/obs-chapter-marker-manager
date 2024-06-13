@@ -740,7 +740,7 @@ void ChapterMarkerDock::onAnnotationClicked()
 	obs_frontend_push_ui_translation(obs_module_get_string);
 
 	if (!annotationDock) {
-		annotationDock = new AnnotationDock(main_window);
+		annotationDock = new AnnotationDock(this, main_window);
 
 		const QString title = QString::fromUtf8(
 			obs_module_text("StreamUP Annotation"));
@@ -775,4 +775,38 @@ void ChapterMarkerDock::onAnnotationClicked()
 void ChapterMarkerDock::setAnnotationDock(AnnotationDock *dock)
 {
 	annotationDock = dock;
+}
+
+void ChapterMarkerDock::writeAnnotationToFile(const QString &chapterName,
+					      const QString &timestamp,
+					      const QString &chapterSource)
+{
+	if (!exportChaptersEnabled) {
+		return;
+	}
+
+	if (chapterFilePath.isEmpty()) {
+		blog(LOG_ERROR,
+		     "[StreamUP Record Chapter Manager] Chapter file path is not set.");
+		return;
+	}
+
+	QFile file(chapterFilePath);
+	if (file.open(QIODevice::Append | QIODevice::Text)) {
+		QTextStream out(&file);
+		QString fullChapterName = chapterName;
+		QString prefix = "";
+
+		if (addChapterSourceEnabled) {
+			prefix = "(Annotation) ";
+			//fullChapterName += " (" + chapterSource + ")";
+		}
+
+		out << prefix << timestamp << " - " << fullChapterName << "\n";
+		file.close();
+	} else {
+		blog(LOG_ERROR,
+		     "[StreamUP Record Chapter Manager] Failed to open chapter file: %s",
+		     QT_TO_UTF8(chapterFilePath));
+	}
 }

@@ -1,14 +1,16 @@
 #include "annotation-dock.hpp"
+#include "chapter-marker-dock.hpp"
 #include <QFile>
 #include <QTextStream>
 
 #define QT_TO_UTF8(str) str.toUtf8().constData()
 
-AnnotationDock::AnnotationDock(QWidget *parent)
+AnnotationDock::AnnotationDock(ChapterMarkerDock *chapterDock, QWidget *parent)
 	: QFrame(parent),
 	  annotationEdit(new QTextEdit(this)),
 	  saveButton(new QPushButton("Save Annotation", this)),
-	  feedbackLabel(new QLabel("", this))
+	  feedbackLabel(new QLabel("", this)),
+	  chapterDock(chapterDock)
 {
 	setupUI();
 	setupConnections();
@@ -40,30 +42,21 @@ void AnnotationDock::setupConnections()
 
 void AnnotationDock::onSaveAnnotationButton()
 {
-	if (chapterFilePath.isEmpty()) {
+	if (chapterDock->chapterFilePath.isEmpty()) {
 		feedbackLabel->setText("Chapter file path is not set.");
 		feedbackLabel->setStyleSheet("color: red;");
 		feedbackTimer.start();
 		return;
 	}
 
-	QFile file(chapterFilePath);
-	if (file.open(QIODevice::Append | QIODevice::Text)) {
-		QTextStream out(&file);
-		out << annotationEdit->toPlainText() << "\n";
-		file.close();
-		feedbackLabel->setText("Annotation saved.");
-		feedbackLabel->setStyleSheet("color: green;");
-		annotationEdit->clear();
-	} else {
-		feedbackLabel->setText("Failed to save annotation.");
-		feedbackLabel->setStyleSheet("color: red;");
-	}
+	QString annotationText = annotationEdit->toPlainText();
+	QString timestamp = chapterDock->getCurrentRecordingTime();
+	chapterDock->writeAnnotationToFile(annotationText, timestamp,
+					   "Annotation");
+
+	feedbackLabel->setText("Annotation saved.");
+	feedbackLabel->setStyleSheet("color: green;");
+	annotationEdit->clear();
 
 	feedbackTimer.start();
-}
-
-void AnnotationDock::setChapterFilePath(const QString &filePath)
-{
-	chapterFilePath = filePath;
 }

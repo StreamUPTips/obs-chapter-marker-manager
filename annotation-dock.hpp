@@ -11,11 +11,14 @@
 #include <QTimer>
 #include <obs-frontend-api.h>
 
+class ChapterMarkerDock; // Forward declaration
+
 class AnnotationDock : public QFrame {
 	Q_OBJECT
 
 public:
-	AnnotationDock(QWidget *parent = nullptr);
+	AnnotationDock(ChapterMarkerDock *chapterDock,
+		       QWidget *parent = nullptr);
 	~AnnotationDock();
 
 public slots:
@@ -30,10 +33,7 @@ private:
 	QLabel *feedbackLabel;
 	QTimer feedbackTimer;
 
-	QString chapterFilePath;
-
-public:
-	void setChapterFilePath(const QString &filePath);
+	ChapterMarkerDock *chapterDock; // Pointer to ChapterMarkerDock
 };
 
 #endif // ANNOTATION_DOCK_HPP
