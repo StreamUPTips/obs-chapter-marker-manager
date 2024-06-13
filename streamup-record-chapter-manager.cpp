@@ -22,40 +22,7 @@ OBS_DECLARE_MODULE()
 OBS_MODULE_AUTHOR("Andilippi");
 OBS_MODULE_USE_DEFAULT_LOCALE("streamup-record-chapter-manager", "en-US")
 
-static ChapterMarkerDock *dock_widget = nullptr;
-static AnnotationDock *annotation_dock = nullptr;
-
-static void LoadAnnotationDock()
-{
-	const auto main_window =
-		static_cast<QMainWindow *>(obs_frontend_get_main_window());
-	obs_frontend_push_ui_translation(obs_module_get_string);
-
-	if (!annotation_dock) {
-		annotation_dock = new AnnotationDock(main_window);
-
-		const QString title = QString::fromUtf8(
-			obs_module_text("StreamUP Annotation"));
-		const auto name = "AnnotationDock";
-
-#if LIBOBS_API_VER >= MAKE_SEMANTIC_VERSION(30, 0, 0)
-		obs_frontend_add_dock_by_id(name, QT_TO_UTF8(title),
-					    annotation_dock);
-#else
-		auto dock = new QDockWidget(main_window);
-		dock->setObjectName(name);
-		dock->setWindowTitle(title);
-		dock->setWidget(annotation_dock);
-		dock->setFeatures(QDockWidget::DockWidgetMovable |
-				  QDockWidget::DockWidgetFloatable);
-		dock->setFloating(true);
-		dock->hide();
-		obs_frontend_add_dock(dock);
-#endif
-
-		obs_frontend_pop_ui_translation();
-	}
-}
+static ChapterMarkerDock *chapterMarkerDock = nullptr;
 
 static void LoadChapterMarkerDock()
 {
@@ -63,8 +30,8 @@ static void LoadChapterMarkerDock()
 		static_cast<QMainWindow *>(obs_frontend_get_main_window());
 	obs_frontend_push_ui_translation(obs_module_get_string);
 
-	if (!dock_widget) {
-		dock_widget = new ChapterMarkerDock(main_window);
+	if (!chapterMarkerDock) {
+		chapterMarkerDock = new ChapterMarkerDock(main_window);
 
 		const QString title = QString::fromUtf8(
 			obs_module_text("StreamUP Chapter Marker"));
@@ -72,7 +39,7 @@ static void LoadChapterMarkerDock()
 
 #if LIBOBS_API_VER >= MAKE_SEMANTIC_VERSION(30, 0, 0)
 		obs_frontend_add_dock_by_id(name, QT_TO_UTF8(title),
-					    dock_widget);
+					    chapterMarkerDock);
 #else
 		auto dock = new QDockWidget(main_window);
 		dock->setObjectName(name);
@@ -91,7 +58,7 @@ static void LoadChapterMarkerDock()
 
 static void CreateChapterFile()
 {
-	if (!dock_widget || !dock_widget->exportChaptersEnabled) {
+	if (!chapterMarkerDock || !chapterMarkerDock->exportChaptersEnabled) {
 		return;
 	}
 
@@ -140,9 +107,9 @@ static void CreateChapterFile()
 		     "[StreamUP Record Chapter Manager] Created chapter file: %s",
 		     QT_TO_UTF8(chapterFilePath));
 
-		dock_widget->setChapterFilePath(chapterFilePath);
-		QString timestamp = dock_widget->getCurrentRecordingTime();
-		dock_widget->addChapterMarker("Start", "Recording");
+		chapterMarkerDock->setChapterFilePath(chapterFilePath);
+		QString timestamp = chapterMarkerDock->getCurrentRecordingTime();
+		chapterMarkerDock->addChapterMarker("Start", "Recording");
 	} else {
 		blog(LOG_ERROR,
 		     "[StreamUP Record Chapter Manager] Failed to create chapter file: %s",
@@ -154,15 +121,15 @@ static void FrontEndEventHandler(enum obs_frontend_event event, void *)
 {
 	switch (event) {
 	case OBS_FRONTEND_EVENT_RECORDING_STARTED:
-		if (dock_widget) {
-			dock_widget->updateCurrentChapterLabel("Start");
+		if (chapterMarkerDock) {
+			chapterMarkerDock->updateCurrentChapterLabel("Start");
 			CreateChapterFile();
 		}
 		break;
 	case OBS_FRONTEND_EVENT_RECORDING_STOPPED:
-		if (dock_widget) {
-			dock_widget->setNoRecordingActive();
-			dock_widget->showFeedbackMessage("Recording finished.",
+		if (chapterMarkerDock) {
+			chapterMarkerDock->setNoRecordingActive();
+			chapterMarkerDock->showFeedbackMessage("Recording finished.",
 							 false);
 		}
 		break;
@@ -197,20 +164,20 @@ void AddDefaultChapterMarkerHotkey(void *data, obs_hotkey_id id, obs_hotkey_t *h
 	if (!pressed)
 		return;
 	if (!obs_frontend_recording_active()) {
-		dock_widget->setNoRecordingActive();
-		dock_widget->showFeedbackMessage(
+		chapterMarkerDock->setNoRecordingActive();
+		chapterMarkerDock->showFeedbackMessage(
 			"Recording is not active. Chapter marker not added.",
 			true);
 		return;
 	}
 
-	QString chapterName = dock_widget->defaultChapterName + " " +
-			      QString::number(dock_widget->chapterCount);
-	dock_widget->addChapterMarker(chapterName, "Hotkey");
+	QString chapterName = chapterMarkerDock->defaultChapterName + " " +
+			      QString::number(chapterMarkerDock->chapterCount);
+	chapterMarkerDock->addChapterMarker(chapterName, "Hotkey");
 	blog(LOG_INFO, "[StreamUP Record Chapter Manager] chapterCount: %d",
-	     dock_widget->chapterCount);
+	     chapterMarkerDock->chapterCount);
 
-	dock_widget->chapterCount++; // Increment the chapter count
+	chapterMarkerDock->chapterCount++; // Increment the chapter count
 }
 
 //--------------------MENU HELPERS--------------------
@@ -277,7 +244,7 @@ static void RegisterHotkeys()
 	addDefaultChapterMarkerHotkey = obs_hotkey_register_frontend(
 		"addDefaultChapterMarker",
 		obs_module_text("AddDefaultChapterMarker"), AddDefaultChapterMarkerHotkey,
-		dock_widget);
+		chapterMarkerDock);
 }
 
 bool obs_module_load()
@@ -294,11 +261,11 @@ bool obs_module_load()
 	obs_data_t *settings = SaveLoadSettingsCallback(nullptr, false);
 
 	if (settings) {
-		dock_widget->applySettings(settings);
+		chapterMarkerDock->applySettings(settings);
 		obs_data_release(settings);
 	}
 
-	dock_widget->onAnnotationClicked();
+	chapterMarkerDock->onAnnotationClicked();
 
 	return true;
 }
