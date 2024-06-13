@@ -16,6 +16,9 @@
 #include <QStringList>
 #include <obs-frontend-api.h>
 
+// Forward declaration of AnnotationDock
+class AnnotationDock;
+
 class ChapterMarkerDock : public QFrame {
 	Q_OBJECT
 
@@ -51,10 +54,12 @@ public:
 	int chapterCount;
 	void applySettings(obs_data_t *settings);
 
+	void setAnnotationDock(AnnotationDock *dock);
 
 public slots:
 	void onAddChapterMarkerButton();
 	void onSettingsClicked();
+	void onAnnotationClicked(); // New slot for annotation button
 	void onSceneChanged();
 	void onRecordingStopped();
 	void onHistoryItemSelected();
@@ -81,6 +86,7 @@ private:
 	QLineEdit *chapterNameEdit;
 	QPushButton *saveButton;
 	QPushButton *settingsButton;
+	QPushButton *annotationButton; // New button for annotation dock
 	QLabel *currentChapterTextLabel;
 	QLabel *currentChapterNameLabel;
 	QLabel *feedbackLabel;
@@ -99,6 +105,8 @@ private:
 
 	QStringList chapters;
 	QStringList timestamps;
+
+	AnnotationDock *annotationDock; // Pointer to the annotation dock
 };
 
 #endif // CHAPTER_MARKER_DOCK_HPP

@@ -1,4 +1,5 @@
 #include "chapter-marker-dock.hpp"
+#include "annotation-dock.hpp"
 #include "streamup-record-chapter-manager.hpp"
 #include <obs-frontend-api.h>
 #include <obs-module.h>
@@ -39,7 +40,9 @@ ChapterMarkerDock::ChapterMarkerDock(QWidget *parent)
 	  addChapterSourceEnabled(false),
 	  chapterHistoryList(new QListWidget(this)),
 	  defaultChapterName("Chapter"),
-	  chapterCount(1)
+	  chapterCount(1),
+	  annotationButton(new QPushButton("Annotate", this)),
+	  annotationDock(nullptr)
 {
 	// UI Setup
 	setupUI();
@@ -113,12 +116,17 @@ void ChapterMarkerDock::setupSaveButtonLayout(QVBoxLayout *mainLayout)
 	settingsButton->setIconSize(QSize(20, 20));
 	settingsButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 
-	// Add the Save Chapter Marker button and a stretch to push the settings button to the right
+	// Add the buttons
 	saveButtonLayout->addWidget(saveButton);
+	saveButtonLayout->addWidget(
+		annotationButton); // Add the annotation button
 	saveButtonLayout->addStretch();
 	saveButtonLayout->addWidget(settingsButton);
 
 	saveButtonLayout->setAlignment(saveButton, Qt::AlignLeft);
+	saveButtonLayout->setAlignment(
+		annotationButton,
+		Qt::AlignCenter); // Center the annotation button
 	saveButtonLayout->setAlignment(settingsButton, Qt::AlignRight);
 
 	mainLayout->addLayout(saveButtonLayout);
@@ -155,6 +163,9 @@ void ChapterMarkerDock::setupConnections()
 		&ChapterMarkerDock::onAddChapterMarkerButton);
 	connect(settingsButton, &QPushButton::clicked, this,
 		&ChapterMarkerDock::onSettingsClicked);
+	connect(annotationButton, &QPushButton::clicked, this,
+		&ChapterMarkerDock::
+			onAnnotationClicked); // Connect annotation button
 
 	connect(chapterHistoryList, &QListWidget::itemClicked, this,
 		&ChapterMarkerDock::onHistoryItemSelected);
@@ -719,4 +730,17 @@ void ChapterMarkerDock::applySettings(obs_data_t *settings)
 
 	// Update UI states based on the loaded settings
 	initialiseUIStates();
+}
+
+void ChapterMarkerDock::onAnnotationClicked()
+{
+	if (annotationDock) {
+		annotationDock->setChapterFilePath(chapterFilePath);
+		annotationDock->show();
+	}
+}
+
+void ChapterMarkerDock::setAnnotationDock(AnnotationDock *dock)
+{
+	annotationDock = dock;
 }

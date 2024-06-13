@@ -25,6 +25,8 @@ target_sources(${PROJECT_NAME} PRIVATE
   streamup-record-chapter-manager.hpp
   chapter-marker-dock.cpp
   chapter-marker-dock.hpp
+  annotation-dock.cpp
+  annotation-dock.hpp
   version.h)
 
 find_package(CURL REQUIRED)
