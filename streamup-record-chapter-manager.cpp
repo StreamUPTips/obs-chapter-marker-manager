@@ -290,12 +290,6 @@ bool obs_module_load()
 	obs_frontend_add_event_callback(FrontEndEventHandler, nullptr);
 
 	LoadChapterMarkerDock();
-	LoadAnnotationDock(); // Load the annotation dock
-
-	if (dock_widget && annotation_dock) {
-		dock_widget->setAnnotationDock(
-			annotation_dock); // Set the annotation dock in the chapter marker dock
-	}
 
 	obs_data_t *settings = SaveLoadSettingsCallback(nullptr, false);
 
@@ -303,6 +297,8 @@ bool obs_module_load()
 		dock_widget->applySettings(settings);
 		obs_data_release(settings);
 	}
+
+	dock_widget->onAnnotationClicked();
 
 	return true;
 }

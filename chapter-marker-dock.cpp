@@ -16,6 +16,7 @@
 #include <QDialogButtonBox>
 #include <QFrame>
 #include <QGroupBox>
+#include <QMainWindow>
 
 #define QT_TO_UTF8(str) str.toUtf8().constData()
 
@@ -734,9 +735,40 @@ void ChapterMarkerDock::applySettings(obs_data_t *settings)
 
 void ChapterMarkerDock::onAnnotationClicked()
 {
-	if (annotationDock) {
-		annotationDock->setChapterFilePath(chapterFilePath);
-		annotationDock->show();
+	const auto main_window =
+		static_cast<QMainWindow *>(obs_frontend_get_main_window());
+	obs_frontend_push_ui_translation(obs_module_get_string);
+
+	if (!annotationDock) {
+		annotationDock = new AnnotationDock(main_window);
+
+		const QString title = QString::fromUtf8(
+			obs_module_text("StreamUP Annotation"));
+		const auto name = "AnnotationDock";
+
+#if LIBOBS_API_VER >= MAKE_SEMANTIC_VERSION(30, 0, 0)
+		obs_frontend_add_dock_by_id(name, QT_TO_UTF8(title),
+					    annotationDock);
+#else
+		auto dock = new QDockWidget(main_window);
+		dock->setObjectName(name);
+		dock->setWindowTitle(title);
+		dock->setWidget(annotationDock);
+		dock->setFeatures(QDockWidget::DockWidgetMovable |
+				  QDockWidget::DockWidgetFloatable);
+		dock->setFloating(true);
+		obs_frontend_add_dock(dock);
+
+		// Show the dock immediately after adding it
+		dock->show();
+		dock->raise();
+#endif
+
+		obs_frontend_pop_ui_translation();
+	} else {
+		// If the dock already exists, show it and bring it to the front
+		annotationDock->parentWidget()->show();
+		annotationDock->parentWidget()->raise();
 	}
 }
 
