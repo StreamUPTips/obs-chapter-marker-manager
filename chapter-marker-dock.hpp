@@ -28,9 +28,6 @@ public:
 	void setChapterFilePath(const QString &filePath);
 	void setAddChapterSourceEnabled(bool enabled);
 	bool isAddChapterSourceEnabled() const;
-	void setIgnoredScenes(const QStringList &scenes);
-	QStringList getIgnoredScenes() const;
-	bool isExportChaptersEnabled() const;
 
 	QString getDefaultChapterName() const { return defaultChapterName; }
 

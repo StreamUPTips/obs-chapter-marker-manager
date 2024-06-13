@@ -55,7 +55,7 @@ static void LoadChapterMarkerDock()
 	}
 }
 
-static void createChapterFile()
+static void CreateChapterFile()
 {
 	if (!dock_widget || !dock_widget->exportChaptersEnabled) {
 		return;
@@ -116,13 +116,13 @@ static void createChapterFile()
 	}
 }
 
-static void on_frontend_event(enum obs_frontend_event event, void *)
+static void FrontEndEventHandler(enum obs_frontend_event event, void *)
 {
 	switch (event) {
 	case OBS_FRONTEND_EVENT_RECORDING_STARTED:
 		if (dock_widget) {
 			dock_widget->updateCurrentChapterLabel("Start");
-			createChapterFile();
+			CreateChapterFile();
 		}
 		break;
 	case OBS_FRONTEND_EVENT_RECORDING_STOPPED:
@@ -140,7 +140,7 @@ static void on_frontend_event(enum obs_frontend_event event, void *)
 //--------------------HOTKEY HANDLERS--------------------
 obs_hotkey_id addDefaultChapterMarkerHotkey = OBS_INVALID_HOTKEY_ID;
 
-static void frontend_save_load(obs_data_t *save_data, bool saving, void *)
+static void SaveLoadHotkeys(obs_data_t *save_data, bool saving, void *)
 {
 	if (saving) {
 		obs_data_array_t *hotkey_save_array =
@@ -157,7 +157,7 @@ static void frontend_save_load(obs_data_t *save_data, bool saving, void *)
 	}
 }
 
-void onHotkeyTriggered(void *data, obs_hotkey_id id, obs_hotkey_t *hotkey,
+void AddDefaultChapterMarkerHotkey(void *data, obs_hotkey_id id, obs_hotkey_t *hotkey,
 		       bool pressed)
 {
 	if (!pressed)
@@ -242,7 +242,7 @@ static void RegisterHotkeys()
 {
 	addDefaultChapterMarkerHotkey = obs_hotkey_register_frontend(
 		"addDefaultChapterMarker",
-		obs_module_text("AddDefaultChapterMarker"), onHotkeyTriggered,
+		obs_module_text("AddDefaultChapterMarker"), AddDefaultChapterMarkerHotkey,
 		dock_widget);
 }
 
@@ -252,8 +252,8 @@ bool obs_module_load()
 	     PROJECT_VERSION);
 
 	RegisterHotkeys();
-	obs_frontend_add_save_callback(frontend_save_load, nullptr);
-	obs_frontend_add_event_callback(on_frontend_event, nullptr);
+	obs_frontend_add_save_callback(SaveLoadHotkeys, nullptr);
+	obs_frontend_add_event_callback(FrontEndEventHandler, nullptr);
 
 	LoadChapterMarkerDock();
 
@@ -275,9 +275,9 @@ void obs_module_post_load(void)
 //--------------------EXIT COMMANDS--------------------
 void obs_module_unload()
 {
-	obs_frontend_remove_event_callback(on_frontend_event, nullptr);
+	obs_frontend_remove_event_callback(FrontEndEventHandler, nullptr);
 
-	obs_frontend_remove_save_callback(frontend_save_load, nullptr);
+	obs_frontend_remove_save_callback(SaveLoadHotkeys, nullptr);
 	obs_hotkey_unregister(addDefaultChapterMarkerHotkey);
 }
 
