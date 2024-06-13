@@ -27,6 +27,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   chapter-marker-dock.hpp
   annotation-dock.cpp
   annotation-dock.hpp
+  resources.qrc
   version.h)
 
 find_package(CURL REQUIRED)

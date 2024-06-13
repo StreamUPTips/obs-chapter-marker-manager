@@ -58,6 +58,7 @@ public:
 	void writeAnnotationToFile(const QString &chapterName,
 				   const QString &timestamp,
 				   const QString &chapterSource);
+	void applyThemeIDToButton(QPushButton *button, const QString &themeID);
 
 public slots:
 	void onAddChapterMarkerButton();

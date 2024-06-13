@@ -42,7 +42,7 @@ ChapterMarkerDock::ChapterMarkerDock(QWidget *parent)
 	  chapterHistoryList(new QListWidget(this)),
 	  defaultChapterName("Chapter"),
 	  chapterCount(1),
-	  annotationButton(new QPushButton("Annotate", this)),
+	  annotationButton(new QPushButton(this)),
 	  annotationDock(nullptr)
 {
 	// UI Setup
@@ -113,15 +113,13 @@ void ChapterMarkerDock::setupSaveButtonLayout(QVBoxLayout *mainLayout)
 	saveButton->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 
 	// Configure the settings button
-	settingsButton->setMinimumSize(32, 24);
-	settingsButton->setMaximumSize(32, 24);
-	settingsButton->setProperty("themeID", "configIconSmall");
-	settingsButton->setIconSize(QSize(20, 20));
-	settingsButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+	applyThemeIDToButton(settingsButton, "configIconSmall");
 
-	// Configure the annotation button
-	annotationButton->setSizePolicy(QSizePolicy::Expanding,
-					QSizePolicy::Fixed);
+	// Configure the annotation button using the applyThemeIDToButton function
+	annotationButton->setIcon(QIcon(":images/annotation-icon.svg"));
+	annotationButton->setMinimumSize(32, 24);
+	annotationButton->setMaximumSize(32, 24);
+	annotationButton->setIconSize(QSize(20, 20));
 
 	// Add the Save Chapter Marker button and a stretch to push the settings button to the right
 	saveButtonLayout->addWidget(saveButton);
@@ -834,4 +832,15 @@ void ChapterMarkerDock::writeAnnotationToFile(const QString &annotationText,
 		     "[StreamUP Record Chapter Manager] Failed to open chapter file: %s",
 		     QT_TO_UTF8(chapterFilePath));
 	}
+}
+
+void ChapterMarkerDock::applyThemeIDToButton(QPushButton *button,
+					     const QString &themeID)
+{
+	button->setProperty("themeID", themeID);
+	button->setMinimumSize(32, 24);
+	button->setMaximumSize(32, 24);
+	button->setIconSize(QSize(20, 20));
+	button->style()->unpolish(button);
+	button->style()->polish(button);
 }
