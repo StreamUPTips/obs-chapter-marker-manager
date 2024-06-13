@@ -42,21 +42,28 @@ void AnnotationDock::setupConnections()
 
 void AnnotationDock::onSaveAnnotationButton()
 {
-	if (chapterDock->chapterFilePath.isEmpty()) {
-		feedbackLabel->setText("Chapter file path is not set.");
+	if (!obs_frontend_recording_active()) {
+		feedbackLabel->setText(
+			"Recording is not active. Annotation not added.");
 		feedbackLabel->setStyleSheet("color: red;");
 		feedbackTimer.start();
 		return;
 	}
 
 	QString annotationText = annotationEdit->toPlainText();
+	if (annotationText.isEmpty()) {
+		feedbackLabel->setText(
+			"Annotation text is empty. Annotation not added.");
+		feedbackLabel->setStyleSheet("color: red;");
+		feedbackTimer.start();
+		return;
+	}
+
 	QString timestamp = chapterDock->getCurrentRecordingTime();
-	chapterDock->writeAnnotationToFile(annotationText, timestamp,
-					   "Annotation");
+	chapterDock->writeAnnotationToFile(annotationText, timestamp, "Annotation");
 
 	feedbackLabel->setText("Annotation saved.");
 	feedbackLabel->setStyleSheet("color: green;");
-	annotationEdit->clear();
-
 	feedbackTimer.start();
+	annotationEdit->clear();
 }

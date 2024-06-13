@@ -53,7 +53,6 @@ ChapterMarkerDock::ChapterMarkerDock(QWidget *parent)
 	setupOBSCallbacks();
 	// initialise UI States
 	initialiseUIStates();
-
 }
 
 ChapterMarkerDock::~ChapterMarkerDock()
@@ -136,7 +135,7 @@ void ChapterMarkerDock::setupSaveButtonLayout(QVBoxLayout *mainLayout)
 void ChapterMarkerDock::setupFeedbackLabel(QVBoxLayout *mainLayout)
 {
 	feedbackLabel->setStyleSheet("color: green;");
-	feedbackLabel->setWordWrap(true); 
+	feedbackLabel->setWordWrap(true);
 	feedbackLabel->setFixedWidth(300);
 	mainLayout->addWidget(feedbackLabel);
 }
@@ -278,7 +277,6 @@ void ChapterMarkerDock::onHistoryItemDoubleClicked(QListWidgetItem *item)
 	}
 }
 
-
 //--------------------UTILITY FUNCTIONS--------------------
 QString ChapterMarkerDock::getChapterName() const
 {
@@ -332,9 +330,13 @@ void ChapterMarkerDock::writeChapterToFile(const QString &chapterName,
 	if (file.open(QIODevice::Append | QIODevice::Text)) {
 		QTextStream out(&file);
 		QString fullChapterName = chapterName;
-		if (addChapterSourceEnabled) {
+
+		// Ensure the chapter source is only appended once
+		if (addChapterSourceEnabled &&
+		    !chapterName.contains(chapterSource)) {
 			fullChapterName += " (" + chapterSource + ")";
 		}
+
 		out << timestamp << " - " << fullChapterName << "\n";
 		file.close();
 	} else {
@@ -388,21 +390,24 @@ void ChapterMarkerDock::addChapterMarker(const QString &chapterName,
 	QString sourceText = " (" + chapterSource + ")";
 
 	if (addChapterSourceEnabled) {
-		if (!fullChapterName.endsWith(sourceText)) {
+		if (!fullChapterName.contains(sourceText)) {
 			fullChapterName += sourceText;
 		}
 	}
 
-	// Check for duplicates in the chapter history list
-	for (int i = 0; i < chapterHistoryList->count(); ++i) {
-		if (chapterHistoryList->item(i)->text() == fullChapterName) {
-			return; // Do not add if duplicate is found
-		}
-	}
+	// Add chapter marker to the recording
+	bool success =
+		obs_frontend_recording_add_chapter(QT_TO_UTF8(fullChapterName));
 
-	if (obs_frontend_recording_add_chapter(QT_TO_UTF8(fullChapterName))) {
+	// Log and handle the result of adding the chapter marker
+	if (success) {
 		QString timestamp = getCurrentRecordingTime();
-		writeChapterToFile(chapterName, timestamp, chapterSource);
+
+		// Always write to the chapter file if enabled
+		if (exportChaptersEnabled) {
+			writeChapterToFile(chapterName, timestamp,
+					   chapterSource);
+		}
 
 		blog(LOG_INFO,
 		     "[StreamUP Record Chapter Manager] Added chapter marker: %s",
@@ -412,6 +417,13 @@ void ChapterMarkerDock::addChapterMarker(const QString &chapterName,
 			QString("Chapter marker added: %1").arg(fullChapterName),
 			false);
 
+		// Move the chapter to the top of the previous chapters list
+		QList<QListWidgetItem *> items = chapterHistoryList->findItems(
+			fullChapterName, Qt::MatchExactly);
+		if (!items.isEmpty()) {
+			delete chapterHistoryList->takeItem(
+				chapterHistoryList->row(items.first()));
+		}
 		chapterHistoryList->insertItem(0, fullChapterName);
 
 		chapters.insert(0, chapterName);
@@ -447,7 +459,6 @@ void ChapterMarkerDock::updatePreviousChaptersVisibility(bool visible)
 {
 	previousChaptersGroup->setVisible(visible);
 }
-
 
 //--------------------CREATE SETTINGS DIALOG--------------------
 QDialog *ChapterMarkerDock::createSettingsDialog()
@@ -656,8 +667,7 @@ void ChapterMarkerDock::initialiseSettingsDialog()
 			showChapterHistoryEnabled);
 		exportChaptersCheckbox->setChecked(exportChaptersEnabled);
 		addChapterSourceCheckbox->setChecked(addChapterSourceEnabled);
-		defaultChapterNameEdit->setText(
-			defaultChapterName);
+		defaultChapterNameEdit->setText(defaultChapterName);
 
 		populateIgnoredScenesListWidget();
 		for (int i = 0; i < ignoredScenesListWidget->count(); ++i) {
@@ -786,18 +796,18 @@ void ChapterMarkerDock::onAnnotationClicked(bool startup)
 	}
 
 	// Show and raise the dock whether it was just created or already existed
-	if (!startup)
-	{
+	if (!startup) {
 		annotationDock->parentWidget()->show();
 		annotationDock->parentWidget()->raise();
 	}
 }
+
 void ChapterMarkerDock::setAnnotationDock(AnnotationDock *dock)
 {
 	annotationDock = dock;
 }
 
-void ChapterMarkerDock::writeAnnotationToFile(const QString &chapterName,
+void ChapterMarkerDock::writeAnnotationToFile(const QString &annotationText,
 					      const QString &timestamp,
 					      const QString &chapterSource)
 {
@@ -814,15 +824,8 @@ void ChapterMarkerDock::writeAnnotationToFile(const QString &chapterName,
 	QFile file(chapterFilePath);
 	if (file.open(QIODevice::Append | QIODevice::Text)) {
 		QTextStream out(&file);
-		QString fullChapterName = chapterName;
-		QString prefix = "";
-
-		if (addChapterSourceEnabled) {
-			prefix = "(Annotation) ";
-			//fullChapterName += " (" + chapterSource + ")";
-		}
-
-		out << prefix << timestamp << " - " << fullChapterName << "\n";
+		QString fullAnnotationText = "(Annotation) " + annotationText;
+		out << timestamp << " - " << fullAnnotationText << "\n";
 		file.close();
 	} else {
 		blog(LOG_ERROR,
