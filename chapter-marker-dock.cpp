@@ -119,17 +119,18 @@ void ChapterMarkerDock::setupSaveButtonLayout(QVBoxLayout *mainLayout)
 	settingsButton->setIconSize(QSize(20, 20));
 	settingsButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 
-	// Add the buttons
+	// Configure the annotation button
+	annotationButton->setSizePolicy(QSizePolicy::Expanding,
+					QSizePolicy::Fixed);
+
+	// Add the Save Chapter Marker button and a stretch to push the settings button to the right
 	saveButtonLayout->addWidget(saveButton);
-	saveButtonLayout->addWidget(
-		annotationButton); // Add the annotation button
 	saveButtonLayout->addStretch();
+	saveButtonLayout->addWidget(annotationButton);
 	saveButtonLayout->addWidget(settingsButton);
 
 	saveButtonLayout->setAlignment(saveButton, Qt::AlignLeft);
-	saveButtonLayout->setAlignment(
-		annotationButton,
-		Qt::AlignCenter); // Center the annotation button
+	saveButtonLayout->setAlignment(annotationButton, Qt::AlignRight);
 	saveButtonLayout->setAlignment(settingsButton, Qt::AlignRight);
 
 	mainLayout->addLayout(saveButtonLayout);
