@@ -136,6 +136,8 @@ void ChapterMarkerDock::setupSaveButtonLayout(QVBoxLayout *mainLayout)
 void ChapterMarkerDock::setupFeedbackLabel(QVBoxLayout *mainLayout)
 {
 	feedbackLabel->setStyleSheet("color: green;");
+	feedbackLabel->setWordWrap(true); 
+	feedbackLabel->setFixedWidth(300);
 	mainLayout->addWidget(feedbackLabel);
 }
 
@@ -298,6 +300,8 @@ void ChapterMarkerDock::setNoRecordingActive()
 void ChapterMarkerDock::showFeedbackMessage(const QString &message,
 					    bool isError)
 {
+	feedbackLabel->setWordWrap(true);
+	feedbackLabel->setFixedWidth(300);
 	feedbackLabel->setText(message);
 	feedbackLabel->setStyleSheet(isError ? "color: red;" : "color: green;");
 	feedbackTimer.start();
@@ -733,8 +737,15 @@ void ChapterMarkerDock::applySettings(obs_data_t *settings)
 	initialiseUIStates();
 }
 
-void ChapterMarkerDock::onAnnotationClicked()
+void ChapterMarkerDock::onAnnotationClicked(bool startup)
 {
+	if (!exportChaptersEnabled && !startup) {
+		showFeedbackMessage(
+			"Please turn on 'Export chapters to .txt file' in settings to use Annotations.",
+			true);
+		return;
+	}
+
 	const auto main_window =
 		static_cast<QMainWindow *>(obs_frontend_get_main_window());
 	obs_frontend_push_ui_translation(obs_module_get_string);

@@ -62,7 +62,7 @@ public:
 public slots:
 	void onAddChapterMarkerButton();
 	void onSettingsClicked();
-	void onAnnotationClicked(); // New slot for annotation button
+	void onAnnotationClicked(bool startup); // New slot for annotation button
 	void onSceneChanged();
 	void onRecordingStopped();
 	void onHistoryItemSelected();

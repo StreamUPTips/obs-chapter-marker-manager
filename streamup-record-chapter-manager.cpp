@@ -265,7 +265,7 @@ bool obs_module_load()
 		obs_data_release(settings);
 	}
 
-	chapterMarkerDock->onAnnotationClicked();
+	chapterMarkerDock->onAnnotationClicked(true);
 
 	return true;
 }
