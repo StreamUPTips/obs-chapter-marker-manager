@@ -187,23 +187,15 @@ obs_data_t *SaveLoadSettingsCallback(obs_data_t *save_data, bool saving)
 	char *configPath = obs_module_config_path("configs.json");
 	obs_data_t *data = nullptr;
 
-	blog(LOG_INFO, "[StreamUP Record Chapter Manager] Config path: %s",
-	     configPath);
-
 	if (saving) {
-		blog(LOG_INFO,
-		     "[StreamUP Record Chapter Manager] Saving settings...");
 		if (obs_data_save_json(save_data, configPath)) {
-			blog(LOG_INFO,
-			     "[StreamUP Record Chapter Manager] Settings saved to %s",
+			blog(LOG_INFO, "[StreamUP Record Chapter Manager] Settings saved to %s",
 			     configPath);
 		} else {
 			blog(LOG_WARNING,
 			     "[StreamUP Record Chapter Manager] Failed to save settings to file.");
 		}
 	} else {
-		blog(LOG_INFO,
-		     "[StreamUP Record Chapter Manager] Loading settings...");
 		data = obs_data_create_from_json_file(configPath);
 
 		if (!data) {
@@ -211,6 +203,16 @@ obs_data_t *SaveLoadSettingsCallback(obs_data_t *save_data, bool saving)
 			     "[StreamUP Record Chapter Manager] Settings not found. Creating default settings...");
 			os_mkdirs(obs_module_config_path(""));
 			data = obs_data_create();
+			obs_data_set_string(data,
+						    "default_chapter_name",
+						    "Chapter");
+			obs_data_set_bool(
+				data, "export_chapters_enabled", false);
+			obs_data_set_bool(
+				data, "chapter_on_scene_change_enabled", false);
+			obs_data_set_bool(
+				data, "show_chapter_history_enabled", false);
+
 			if (obs_data_save_json(data, configPath)) {
 				blog(LOG_INFO,
 				     "[StreamUP Record Chapter Manager] Default settings saved to %s",
@@ -229,6 +231,7 @@ obs_data_t *SaveLoadSettingsCallback(obs_data_t *save_data, bool saving)
 	bfree(configPath);
 	return data;
 }
+
 
 //--------------------STARTUP COMMANDS--------------------
 static void RegisterHotkeys(ChapterMarkerDock *dock)
@@ -252,19 +255,17 @@ bool obs_module_load()
 
 	LoadChapterMarkerDock();
 
-	if (dock_widget) {
-		dock_widget->loadSettings();
-	}
-
 	return true;
 }
 
 void obs_module_post_load(void)
 {
-	// Load settings
-	obs_data_t *settings = SaveLoadSettingsCallback(nullptr, false);
+	if (dock_widget) {
+		obs_data_t *settings = SaveLoadSettingsCallback(nullptr, false);
 
-	obs_data_release(settings);
+		obs_data_release(settings);
+	}
+
 }
 
 //--------------------EXIT COMMANDS--------------------

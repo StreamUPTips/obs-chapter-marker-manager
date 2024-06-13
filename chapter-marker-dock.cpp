@@ -207,9 +207,6 @@ void ChapterMarkerDock::onSettingsClicked()
 {
 	if (!settingsDialog) {
 		settingsDialog = createSettingsDialog();
-		// Connect the accept signal to save settings and close the dialog
-		connect(settingsDialog, &QDialog::accepted, this,
-			&ChapterMarkerDock::saveSettingsAndCloseDialog);
 	}
 	initialiseSettingsDialog();
 	settingsDialog->exec();
@@ -441,38 +438,6 @@ void ChapterMarkerDock::updatePreviousChaptersVisibility(bool visible)
 	previousChaptersGroup->setVisible(visible);
 }
 
-void ChapterMarkerDock::loadSettings()
-{
-    obs_data_t *settings = SaveLoadSettingsCallback(nullptr, false);
-
-    if (settings) {
-        chapterOnSceneChangeEnabled = obs_data_get_bool(settings, "chapter_on_scene_change_enabled");
-        showChapterHistoryEnabled = obs_data_get_bool(settings, "show_chapter_history_enabled");
-        exportChaptersEnabled = obs_data_get_bool(settings, "export_chapters_enabled");
-        addChapterSourceEnabled = obs_data_get_bool(settings, "add_chapter_source_enabled");
-        defaultChapterName = QString::fromUtf8(obs_data_get_string(settings, "default_chapter_name"));
-
-        // Load ignored scenes
-        obs_data_array_t *ignoredScenesArray = obs_data_get_array(settings, "ignored_scenes");
-        if (ignoredScenesArray) {
-            ignoredScenes.clear();
-            size_t numScenes = obs_data_array_count(ignoredScenesArray);
-            for (size_t i = 0; i < numScenes; ++i) {
-                obs_data_t *sceneData = obs_data_array_item(ignoredScenesArray, i);
-                const char *sceneName = obs_data_get_string(sceneData, "scene_name");
-                if (sceneName) {
-                    ignoredScenes << QString::fromUtf8(sceneName);
-                }
-                obs_data_release(sceneData);
-            }
-            obs_data_array_release(ignoredScenesArray);
-        }
-
-	updatePreviousChaptersVisibility(showChapterHistoryEnabled);
-
-        obs_data_release(settings);
-    }
-}
 
 //--------------------CREATE SETTINGS DIALOG--------------------
 QDialog *ChapterMarkerDock::createSettingsDialog()
@@ -488,11 +453,12 @@ QDialog *ChapterMarkerDock::createSettingsDialog()
 
 	QDialogButtonBox *buttonBox = new QDialogButtonBox(
 		QDialogButtonBox::Ok | QDialogButtonBox::Cancel, dialog);
-	connect(buttonBox, &QDialogButtonBox::accepted, dialog,
-		&QDialog::accept);
+
+	connect(buttonBox, &QDialogButtonBox::accepted, this,
+		&ChapterMarkerDock::saveSettingsAndCloseDialog);
+
 	connect(buttonBox, &QDialogButtonBox::rejected, dialog,
 		&QDialog::reject);
-
 	mainLayout->addWidget(buttonBox);
 
 	// Connect the checkbox state change to toggle the visibility of the ignored scenes group and adjust the dialog size
@@ -613,14 +579,6 @@ void ChapterMarkerDock::setupSceneChangeSettingsGroup(QVBoxLayout *mainLayout)
 
 void ChapterMarkerDock::saveSettingsAndCloseDialog()
 {
-	static bool isSaving = false;
-
-	if (isSaving) {
-		return;
-	}
-
-	isSaving = true;
-
 	// Create a new obs_data_t object
 	obs_data_t *saveData = obs_data_create();
 
@@ -667,8 +625,6 @@ void ChapterMarkerDock::saveSettingsAndCloseDialog()
 
 	// Close the dialog
 	settingsDialog->accept();
-
-	isSaving = false;
 }
 
 //--------------------INITIALISE SETTINGS DIALOG STATES--------------------

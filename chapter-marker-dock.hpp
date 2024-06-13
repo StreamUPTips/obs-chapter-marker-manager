@@ -44,7 +44,6 @@ public:
 				const QString &chapterSource);
 	void addChapterMarker(const QString &chapterName,
 			      const QString &chapterSource);
-	void loadSettings();
 	bool exportChaptersEnabled;
 	QString chapterFilePath;
 	QString defaultChapterName;
