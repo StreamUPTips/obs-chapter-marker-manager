@@ -48,10 +48,10 @@ public:
 	void addChapterMarker(const QString &chapterName,
 			      const QString &chapterSource);
 	bool exportChaptersToTextEnabled;
-	bool exportChaptersToXMLEnabled; // Add this
+	bool exportChaptersToXMLEnabled;
 	bool exportChaptersToFileEnabled;
 	QString chapterFilePath;
-	QString xmlFilePath; // Add this
+	QString xmlFilePath;
 	QString defaultChapterName;
 	QStringList ignoredScenes;
 	bool chapterOnSceneChangeEnabled;
@@ -65,6 +65,7 @@ public:
 				    const QString &timestamp,
 				    const QString &chapterSource);
 	void applyThemeIDToButton(QPushButton *button, const QString &themeID);
+	QDialog *settingsDialog;
 
 public slots:
 	void onAddChapterMarkerButton();
@@ -76,6 +77,7 @@ public slots:
 	void onHistoryItemSelected();
 	void onHistoryItemDoubleClicked(QListWidgetItem *item);
 	void saveSettingsAndCloseDialog();
+	void onSetIgnoredScenesClicked();
 
 private:
 	void setupUI();
@@ -97,12 +99,19 @@ private:
 	QCheckBox *exportChaptersToTextCheckbox;
 	QCheckBox *exportChaptersToXMLCheckbox;
 	QGroupBox *exportSettingsGroup;
+	QCheckBox *insertChapterMarkersCheckbox;
 	void setupExportSettingsGroup(QVBoxLayout *mainLayout);
 	void onExportChaptersToFileToggled(bool checked);
+	void onChapterOnSceneChangeToggled(bool checked);
+	QDialog *createIgnoredScenesDialog();
 
+	QDialog *ignoredScenesDialog;
+	QGroupBox *sceneChangeSettingsGroup;
 	QLineEdit *chapterNameEdit;
+
 	QPushButton *saveButton;
 	QPushButton *settingsButton;
+	QPushButton *setIgnoredScenesButton;
 	QPushButton *annotationButton; // New button for annotation dock
 	QLabel *currentChapterTextLabel;
 	QLabel *currentChapterNameLabel;
@@ -111,7 +120,6 @@ private:
 	QListWidget *chapterHistoryList;
 	QGroupBox *previousChaptersGroup;
 
-	QDialog *settingsDialog;
 	QLineEdit *defaultChapterNameEdit;
 	QCheckBox *showChapterHistoryCheckbox;
 	QCheckBox *addChapterSourceCheckbox;
@@ -122,6 +130,9 @@ private:
 	QStringList chapters;
 	QStringList timestamps;
 
+	QHBoxLayout *textCheckboxLayout;
+	QHBoxLayout *xmlCheckboxLayout;
+	QVBoxLayout *exportSettingsLayout;
 	AnnotationDock *annotationDock; // Pointer to the annotation dock
 };
 

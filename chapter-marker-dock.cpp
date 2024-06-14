@@ -43,7 +43,9 @@ ChapterMarkerDock::ChapterMarkerDock(QWidget *parent)
 	  defaultChapterName("Chapter"),
 	  chapterCount(1),
 	  annotationButton(new QPushButton(this)),
-	  annotationDock(nullptr)
+	  annotationDock(nullptr),
+	  ignoredScenesDialog(
+		  nullptr) // Initialize ignoredScenesDialog to nullptr
 {
 	// UI Setup
 	setupUI();
@@ -59,6 +61,9 @@ ChapterMarkerDock::~ChapterMarkerDock()
 {
 	if (settingsDialog) {
 		delete settingsDialog;
+	}
+	if (ignoredScenesDialog) {
+		delete ignoredScenesDialog;
 	}
 }
 
@@ -79,33 +84,6 @@ void ChapterMarkerDock::setupUI()
 	setupPreviousChaptersGroup(mainLayout);
 
 	setLayout(mainLayout);
-}
-
-void ChapterMarkerDock::setupExportSettingsGroup(QVBoxLayout *mainLayout)
-{
-	exportSettingsGroup = new QGroupBox("Export", settingsDialog);
-	QVBoxLayout *exportSettingsLayout =
-		new QVBoxLayout(exportSettingsGroup);
-
-	exportChaptersToFileCheckbox = new QCheckBox(
-		"Export Chapter Markers to File", exportSettingsGroup);
-	exportChaptersToTextCheckbox =
-		new QCheckBox("Export to .txt", exportSettingsGroup);
-	exportChaptersToXMLCheckbox =
-		new QCheckBox("Export to .xml", exportSettingsGroup);
-
-	exportChaptersToTextCheckbox->setEnabled(false);
-	exportChaptersToXMLCheckbox->setEnabled(false);
-
-	connect(exportChaptersToFileCheckbox, &QCheckBox::toggled, this,
-		&ChapterMarkerDock::onExportChaptersToFileToggled);
-
-	exportSettingsLayout->addWidget(exportChaptersToFileCheckbox);
-	exportSettingsLayout->addWidget(exportChaptersToTextCheckbox);
-	exportSettingsLayout->addWidget(exportChaptersToXMLCheckbox);
-
-	exportSettingsGroup->setLayout(exportSettingsLayout);
-	mainLayout->addWidget(exportSettingsGroup);
 }
 
 void ChapterMarkerDock::setupCurrentChapterLayout(QVBoxLayout *mainLayout)
@@ -216,12 +194,6 @@ void ChapterMarkerDock::initialiseUIStates()
 }
 
 //--------------------EVENT HANDLERS--------------------
-void ChapterMarkerDock::onExportChaptersToFileToggled(bool checked)
-{
-	exportChaptersToTextCheckbox->setEnabled(checked);
-	exportChaptersToXMLCheckbox->setEnabled(checked);
-}
-
 void ChapterMarkerDock::onAddChapterMarkerButton()
 {
 	if (!obs_frontend_recording_active()) {
@@ -346,8 +318,8 @@ void ChapterMarkerDock::clearChapterHistory()
 }
 
 void ChapterMarkerDock::writeChapterToTextFile(const QString &chapterName,
-					   const QString &timestamp,
-					   const QString &chapterSource)
+					       const QString &timestamp,
+					       const QString &chapterSource)
 {
 	if (!exportChaptersToTextEnabled || !exportChaptersToFileEnabled) {
 		return;
@@ -501,70 +473,35 @@ void ChapterMarkerDock::updatePreviousChaptersVisibility(bool visible)
 //--------------------CREATE SETTINGS DIALOG--------------------
 QDialog *ChapterMarkerDock::createSettingsDialog()
 {
-	QDialog *dialog = new QDialog(this);
-	dialog->setWindowTitle("Settings");
-	dialog->setFixedSize(400, 350); // Adjust the size for new settings
+	settingsDialog = new QDialog(this);
+	settingsDialog->setWindowTitle("Settings");
 
-	QVBoxLayout *mainLayout = new QVBoxLayout(dialog);
+	QVBoxLayout *mainLayout = new QVBoxLayout(settingsDialog);
 
 	setupGeneralSettingsGroup(mainLayout);
+	setupExportSettingsGroup(mainLayout);
 	setupSceneChangeSettingsGroup(mainLayout);
 
+	// Add Ok and Cancel buttons
 	QDialogButtonBox *buttonBox = new QDialogButtonBox(
-		QDialogButtonBox::Ok | QDialogButtonBox::Cancel, dialog);
-
+		QDialogButtonBox::Ok | QDialogButtonBox::Cancel,
+		settingsDialog);
 	connect(buttonBox, &QDialogButtonBox::accepted, this,
 		&ChapterMarkerDock::saveSettingsAndCloseDialog);
-
-	connect(buttonBox, &QDialogButtonBox::rejected, dialog,
+	connect(buttonBox, &QDialogButtonBox::rejected, settingsDialog,
 		&QDialog::reject);
 	mainLayout->addWidget(buttonBox);
 
-	// Connect the checkbox state change to toggle the visibility of the ignored scenes group and adjust the dialog size
-	connect(chapterOnSceneChangeCheckbox, &QCheckBox::toggled,
-		[this](bool checked) {
-			ignoredScenesGroup->setVisible(checked);
-			if (checked) {
-				settingsDialog->setMinimumSize(
-					400,
-					550); // Adjust the minimum size when ignored scenes are visible
-				settingsDialog->setMaximumSize(
-					QWIDGETSIZE_MAX,
-					QWIDGETSIZE_MAX); // Allow resizing
-			} else {
-				settingsDialog->setFixedSize(
-					400,
-					350); // Reset to the fixed size when ignored scenes are hidden
-			}
-		});
+	previousChaptersGroup->setVisible(showChapterHistoryEnabled);
 
-	connect(dialog, &QDialog::accepted, [this]() {
-		chapterOnSceneChangeEnabled =
-			chapterOnSceneChangeCheckbox->isChecked();
-		showChapterHistoryEnabled =
-			showChapterHistoryCheckbox->isChecked();
-		exportChaptersToTextEnabled = exportChaptersToTextCheckbox->isChecked();
-		addChapterSourceEnabled = addChapterSourceCheckbox->isChecked();
-		defaultChapterName =
-			defaultChapterNameEdit->text().isEmpty()
-				? "Chapter"
-				: defaultChapterNameEdit
-					  ->text(); // Save the default chapter name
+	// Set the size policy to Preferred for width and Fixed for height
+	settingsDialog->setSizePolicy(QSizePolicy::Preferred,
+				      QSizePolicy::Fixed);
 
-		ignoredScenes.clear();
-		for (int i = 0; i < ignoredScenesListWidget->count(); ++i) {
-			QListWidgetItem *item =
-				ignoredScenesListWidget->item(i);
-			if (item->isSelected()) {
-				ignoredScenes << item->text();
-			}
-		}
+	// Adjust the dialog size initially to fit the contents
+	settingsDialog->adjustSize();
 
-		// Update the visibility of the chapter history list based on the setting
-		previousChaptersGroup->setVisible(showChapterHistoryEnabled);
-	});
-
-	return dialog;
+	return settingsDialog;
 }
 
 //--------------------SETUP SETTINGS DIALOG GROUPS--------------------
@@ -581,8 +518,15 @@ void ChapterMarkerDock::setupGeneralSettingsGroup(QVBoxLayout *mainLayout)
 	defaultChapterNameEdit->setPlaceholderText(
 		"Enter default chapter name");
 	defaultChapterNameEdit->setText(defaultChapterName);
-	generalSettingsLayout->addWidget(defaultChapterNameLabel);
-	generalSettingsLayout->addWidget(defaultChapterNameEdit);
+	defaultChapterNameEdit->setMinimumWidth(200);
+
+	// Create a horizontal layout to place the label and text box side by side
+	QHBoxLayout *chapterNameLayout = new QHBoxLayout;
+	chapterNameLayout->addWidget(defaultChapterNameLabel);
+	chapterNameLayout->addWidget(defaultChapterNameEdit);
+
+	// Add the horizontal layout to the general settings layout
+	generalSettingsLayout->addLayout(chapterNameLayout);
 
 	showChapterHistoryCheckbox =
 		new QCheckBox("Show chapter history", generalSettingsGroup);
@@ -593,44 +537,181 @@ void ChapterMarkerDock::setupGeneralSettingsGroup(QVBoxLayout *mainLayout)
 	generalSettingsLayout->addWidget(addChapterSourceCheckbox);
 
 	generalSettingsGroup->setLayout(generalSettingsLayout);
-	mainLayout->addWidget(generalSettingsGroup);
+	generalSettingsGroup->adjustSize();
 
-	setupExportSettingsGroup(
-		mainLayout); // Add this line to include the export settings group
+	// Set the size policy to Preferred for width and Fixed for height
+	generalSettingsGroup->setSizePolicy(QSizePolicy::Preferred,
+					    QSizePolicy::Fixed);
+
+	mainLayout->addWidget(generalSettingsGroup);
+}
+
+void ChapterMarkerDock::setupExportSettingsGroup(QVBoxLayout *mainLayout)
+{
+	exportSettingsGroup = new QGroupBox("Export");
+	exportSettingsLayout = new QVBoxLayout(exportSettingsGroup);
+
+	// Insert chapter markers into video file checkbox
+	insertChapterMarkersCheckbox = new QCheckBox(
+		"Insert Chapter Markers into Video File", exportSettingsGroup);
+	exportSettingsLayout->addWidget(insertChapterMarkersCheckbox);
+
+	// Export chapter markers to files
+	exportChaptersToFileCheckbox = new QCheckBox(
+		"Export Chapter Markers to File", exportSettingsGroup);
+	exportChaptersToTextCheckbox =
+		new QCheckBox("Export to .txt", exportSettingsGroup);
+	exportChaptersToXMLCheckbox =
+		new QCheckBox("Export to .xml", exportSettingsGroup);
+
+	exportChaptersToTextCheckbox->setVisible(false);
+	exportChaptersToXMLCheckbox->setVisible(false);
+
+	connect(exportChaptersToFileCheckbox, &QCheckBox::toggled, this,
+		&ChapterMarkerDock::onExportChaptersToFileToggled);
+
+	exportSettingsLayout->addWidget(exportChaptersToFileCheckbox);
+
+	textCheckboxLayout = new QHBoxLayout;
+	xmlCheckboxLayout = new QHBoxLayout;
+	// Add a spacer to the layouts to create the indent
+	textCheckboxLayout->addSpacing(20);
+	xmlCheckboxLayout->addSpacing(20);
+	// Add the checkboxes to the layouts
+	textCheckboxLayout->addWidget(exportChaptersToTextCheckbox);
+	xmlCheckboxLayout->addWidget(exportChaptersToXMLCheckbox);
+
+	// Add the QHBoxLayouts to the main layout
+	exportSettingsLayout->addLayout(textCheckboxLayout);
+	exportSettingsLayout->addLayout(xmlCheckboxLayout);
+
+	exportSettingsGroup->setLayout(exportSettingsLayout);
+
+	// Set the size policy to Preferred for width and Fixed for height
+	exportSettingsGroup->setSizePolicy(QSizePolicy::Preferred,
+					   QSizePolicy::Fixed);
+
+	mainLayout->addWidget(exportSettingsGroup);
+}
+
+void ChapterMarkerDock::onExportChaptersToFileToggled(bool checked)
+{
+	exportChaptersToTextCheckbox->setVisible(checked);
+	exportChaptersToXMLCheckbox->setVisible(checked);
+
+	if (!checked) {
+		exportSettingsLayout->removeItem(textCheckboxLayout);
+		exportSettingsLayout->removeItem(xmlCheckboxLayout);
+	} else {
+		exportSettingsLayout->addLayout(textCheckboxLayout);
+		exportSettingsLayout->addLayout(xmlCheckboxLayout);
+	}
+
+	QSize size = exportSettingsGroup->sizeHint();
+	int newHeight = size.height();
+	exportSettingsGroup->setFixedHeight(newHeight);
+
+	settingsDialog->adjustSize();
 }
 
 void ChapterMarkerDock::setupSceneChangeSettingsGroup(QVBoxLayout *mainLayout)
 {
-	QGroupBox *sceneChangeSettingsGroup =
+	sceneChangeSettingsGroup =
 		new QGroupBox("Scene Change Settings", settingsDialog);
 	QVBoxLayout *sceneChangeSettingsLayout =
 		new QVBoxLayout(sceneChangeSettingsGroup);
 
 	chapterOnSceneChangeCheckbox = new QCheckBox(
-		"Set chapter on scene change", sceneChangeSettingsGroup);
+		"Set Chapter on Scene Change", sceneChangeSettingsGroup);
 	sceneChangeSettingsLayout->addWidget(chapterOnSceneChangeCheckbox);
 
-	// GroupBox for Ignored Scenes
-	ignoredScenesGroup =
-		new QGroupBox("Ignored Scenes", sceneChangeSettingsGroup);
-	ignoredScenesGroup->setStyleSheet(
-		"QGroupBox { font-weight: bold; border: 1px solid gray; padding: 10px; margin-top: 10px; } QGroupBox::title { subcontrol-origin: margin; subcontrol-position: top center; padding: 0 3px; }");
-	QVBoxLayout *ignoredScenesLayout = new QVBoxLayout(ignoredScenesGroup);
+	connect(chapterOnSceneChangeCheckbox, &QCheckBox::toggled, this,
+		&ChapterMarkerDock::onChapterOnSceneChangeToggled);
 
-	ignoredScenesListWidget = new QListWidget(ignoredScenesGroup);
-	ignoredScenesListWidget->setSelectionMode(
-		QAbstractItemView::MultiSelection);
-	ignoredScenesListWidget->setMinimumHeight(
-		100); // Set a minimum height for the ignored scenes list
-	ignoredScenesLayout->addWidget(ignoredScenesListWidget);
+	// Set ignore scene button
+	setIgnoredScenesButton =
+		new QPushButton("Set Ignored Scenes", sceneChangeSettingsGroup);
+	setIgnoredScenesButton->setVisible(false);
+	connect(setIgnoredScenesButton, &QPushButton::clicked, this,
+		&ChapterMarkerDock::onSetIgnoredScenesClicked);
 
-	ignoredScenesGroup->setLayout(ignoredScenesLayout);
-	ignoredScenesGroup->setVisible(false); // Initially hidden
-	sceneChangeSettingsLayout->addWidget(ignoredScenesGroup);
+	sceneChangeSettingsLayout->addWidget(setIgnoredScenesButton);
 
 	sceneChangeSettingsGroup->setLayout(sceneChangeSettingsLayout);
+	sceneChangeSettingsGroup->setSizePolicy(QSizePolicy::Preferred,
+						QSizePolicy::Fixed);
 
 	mainLayout->addWidget(sceneChangeSettingsGroup);
+}
+
+void ChapterMarkerDock::onChapterOnSceneChangeToggled(bool checked)
+{
+	setIgnoredScenesButton->setVisible(checked);
+
+	QSize size = sceneChangeSettingsGroup->sizeHint();
+	int newHeight = size.height();
+	sceneChangeSettingsGroup->setFixedHeight(newHeight);
+
+	settingsDialog->adjustSize();
+}
+
+void ChapterMarkerDock::onSetIgnoredScenesClicked()
+{
+	if (!ignoredScenesDialog) {
+		ignoredScenesDialog = createIgnoredScenesDialog();
+	}
+	ignoredScenesDialog->exec();
+}
+
+QDialog *ChapterMarkerDock::createIgnoredScenesDialog()
+{
+	QDialog *dialog = new QDialog(this);
+	dialog->setWindowTitle("Ignored Scenes");
+
+	QVBoxLayout *mainLayout = new QVBoxLayout(dialog);
+
+	ignoredScenesListWidget = new QListWidget(dialog);
+	ignoredScenesListWidget->setSelectionMode(
+		QAbstractItemView::MultiSelection);
+
+	// Disable horizontal scrolling
+	ignoredScenesListWidget->setHorizontalScrollBarPolicy(
+		Qt::ScrollBarAlwaysOff);
+
+	// Populate the list widget with OBS scene names
+	populateIgnoredScenesListWidget();
+
+	// Adjust the width of the list widget to fit the contents
+	int longestNameWidth = ignoredScenesListWidget->sizeHintForColumn(0);
+	ignoredScenesListWidget->setFixedWidth(longestNameWidth +
+					       30); // Add some padding
+
+	// Calculate the height for 10 entries
+	int rowHeight = ignoredScenesListWidget->sizeHintForRow(0);
+	int listHeight = rowHeight * 10;
+	ignoredScenesListWidget->setFixedHeight(listHeight);
+
+	mainLayout->addWidget(ignoredScenesListWidget);
+
+	// Create OK and Cancel buttons
+	QDialogButtonBox *buttonBox = new QDialogButtonBox(
+		QDialogButtonBox::Ok | QDialogButtonBox::Cancel, dialog);
+	connect(buttonBox, &QDialogButtonBox::accepted, dialog,
+		&QDialog::accept);
+	connect(buttonBox, &QDialogButtonBox::rejected, dialog,
+		&QDialog::reject);
+
+	mainLayout->addWidget(buttonBox);
+
+	dialog->setLayout(mainLayout);
+
+	// Set the size policy to Preferred for width and Fixed for height
+	dialog->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+
+	// Adjust the dialog size initially to fit the contents
+	dialog->adjustSize();
+
+	return dialog;
 }
 
 void ChapterMarkerDock::saveSettingsAndCloseDialog()
@@ -657,18 +738,18 @@ void ChapterMarkerDock::saveSettingsAndCloseDialog()
 
 	obs_data_array_t *ignoredScenesArray = obs_data_array_create();
 
-	for (int i = 0; i < ignoredScenesListWidget->count(); ++i) {
-		QListWidgetItem *item = ignoredScenesListWidget->item(i);
-		if (item->isSelected()) {
-			obs_data_t *sceneData = obs_data_create();
-			obs_data_set_string(sceneData, "scene_name",
-					    item->text().toStdString().c_str());
-			obs_data_array_push_back(ignoredScenesArray, sceneData);
-			obs_data_release(sceneData);
-		}
-	}
+	//for (int i = 0; i < ignoredScenesListWidget->count(); ++i) {
+	//	QListWidgetItem *item = ignoredScenesListWidget->item(i);
+	//	if (item->isSelected()) {
+	//		obs_data_t *sceneData = obs_data_create();
+	//		obs_data_set_string(sceneData, "scene_name",
+	//				    item->text().toStdString().c_str());
+	//		obs_data_array_push_back(ignoredScenesArray, sceneData);
+	//		obs_data_release(sceneData);
+	//	}
+	//}
 
-	obs_data_set_array(saveData, "ignored_scenes", ignoredScenesArray);
+	//obs_data_set_array(saveData, "ignored_scenes", ignoredScenesArray);
 
 	exportChaptersToFileEnabled = exportChaptersToFileCheckbox->isChecked();
 	exportChaptersToTextEnabled = exportChaptersToTextCheckbox->isChecked();
@@ -676,7 +757,7 @@ void ChapterMarkerDock::saveSettingsAndCloseDialog()
 
 	SaveLoadSettingsCallback(saveData, true);
 
-	obs_data_array_release(ignoredScenesArray);
+	//obs_data_array_release(ignoredScenesArray);
 	obs_data_release(saveData);
 
 	if (!exportChaptersToTextCheckbox->isChecked() && annotationDock) {
@@ -849,8 +930,8 @@ void ChapterMarkerDock::setAnnotationDock(AnnotationDock *dock)
 }
 
 void ChapterMarkerDock::writeAnnotationToFiles(const QString &annotationText,
-					      const QString &timestamp,
-					      const QString &chapterSource)
+					       const QString &timestamp,
+					       const QString &chapterSource)
 {
 	if (!exportChaptersToTextEnabled) {
 		return;
