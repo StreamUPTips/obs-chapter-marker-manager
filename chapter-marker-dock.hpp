@@ -27,21 +27,19 @@ public:
 	~ChapterMarkerDock();
 
 	QString getChapterName() const;
-	void setExportFilePath(const QString &filePath);
+	void setExportTextFilePath(const QString &filePath);
 	void setExportXMLFilePath(const QString &filePath);
 	void writeChapterToXMLFile(const QString &chapterName,
 				   const QString &timestamp,
 				   const QString &chapterSource);
-	void setAddChapterSourceEnabled(bool enabled);
-	bool isAddChapterSourceEnabled() const;
 
 	QString getDefaultChapterName() const { return defaultChapterName; }
 
 	QString getCurrentRecordingTime() const;
 	void updateCurrentChapterLabel(const QString &chapterName);
-	void setNoRecordingActive();
+	void createExportFiles();
 	void showFeedbackMessage(const QString &message, bool isError);
-	void clearChapterHistory();
+	void clearPreviousChaptersGroup();
 	void writeChapterToTextFile(const QString &chapterName,
 				    const QString &timestamp,
 				    const QString &chapterSource);
@@ -50,12 +48,12 @@ public:
 	bool exportChaptersToTextEnabled;
 	bool exportChaptersToXMLEnabled;
 	bool exportChaptersToFileEnabled;
-	QString chapterFilePath;
-	QString xmlFilePath;
+	QString exportTextFilePath;
+	QString exportXMLFilePath;
 	QString defaultChapterName;
 	QStringList ignoredScenes;
 	bool chapterOnSceneChangeEnabled;
-	bool showChapterHistoryEnabled;
+	bool showPreviousChaptersEnabled;
 	bool addChapterSourceEnabled;
 	int chapterCount;
 	void applySettings(obs_data_t *settings);
@@ -74,24 +72,24 @@ public slots:
 	onAnnotationClicked(bool startup); // New slot for annotation button
 	void onSceneChanged();
 	void onRecordingStopped();
-	void onHistoryItemSelected();
-	void onHistoryItemDoubleClicked(QListWidgetItem *item);
+	void onPreviousChapterSelected();
+	void onPreviousChapterDoubleClicked(QListWidgetItem *item);
 	void saveSettingsAndCloseDialog();
 	void onSetIgnoredScenesClicked();
 
 private:
-	void setupUI();
-	void setupCurrentChapterLayout(QVBoxLayout *mainLayout);
-	void setupChapterNameEdit(QVBoxLayout *mainLayout);
-	void setupSaveButtonLayout(QVBoxLayout *mainLayout);
-	void setupFeedbackLabel(QVBoxLayout *mainLayout);
-	void setupPreviousChaptersGroup(QVBoxLayout *mainLayout);
+	void setupMainDockUI();
+	void setupMainDockCurrentChapterLayout(QVBoxLayout *mainLayout);
+	void setupMainDockChapterInput(QVBoxLayout *mainLayout);
+	void setupMainDockSaveButtonLayout(QVBoxLayout *mainLayout);
+	void setupMainDockFeedbackLabel(QVBoxLayout *mainLayout);
+	void setupMainDockPreviousChaptersGroup(QVBoxLayout *mainLayout);
 	void setupConnections();
 	void setupOBSCallbacks();
-	void initialiseUIStates();
-	QDialog *createSettingsDialog();
-	void setupGeneralSettingsGroup(QVBoxLayout *mainLayout);
-	void setupSceneChangeSettingsGroup(QVBoxLayout *mainLayout);
+	void initialiseMainDockUI();
+	QDialog *createSettingsUI();
+	void setupSettingsGeneralGroup(QVBoxLayout *mainLayout);
+	void setupSettingsAutoChapterGroup(QVBoxLayout *mainLayout);
 	void initialiseSettingsDialog();
 	void populateIgnoredScenesListWidget();
 	void updatePreviousChaptersVisibility(bool visible);
@@ -100,14 +98,14 @@ private:
 	QCheckBox *exportChaptersToXMLCheckbox;
 	QGroupBox *exportSettingsGroup;
 	QCheckBox *insertChapterMarkersCheckbox;
-	void setupExportSettingsGroup(QVBoxLayout *mainLayout);
+	void setupSettingsExportGroup(QVBoxLayout *mainLayout);
 	void onExportChaptersToFileToggled(bool checked);
 	void onChapterOnSceneChangeToggled(bool checked);
-	QDialog *createIgnoredScenesDialog();
+	QDialog *createIgnoredScenesUI();
 
 	QDialog *ignoredScenesDialog;
 	QGroupBox *sceneChangeSettingsGroup;
-	QLineEdit *chapterNameEdit;
+	QLineEdit *chapterNameInput;
 
 	QPushButton *saveButton;
 	QPushButton *settingsButton;
@@ -117,7 +115,7 @@ private:
 	QLabel *currentChapterNameLabel;
 	QLabel *feedbackLabel;
 	QTimer feedbackTimer;
-	QListWidget *chapterHistoryList;
+	QListWidget *previousChaptersList;
 	QGroupBox *previousChaptersGroup;
 
 	QLineEdit *defaultChapterNameEdit;

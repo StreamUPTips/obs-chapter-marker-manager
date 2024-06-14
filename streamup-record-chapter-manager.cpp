@@ -56,87 +56,14 @@ static void LoadChapterMarkerDock()
 	}
 }
 
-static void CreateChapterFiles()
+static void OnStartRecording()
 {
 	if (!chapterMarkerDock ||
 	    !chapterMarkerDock->exportChaptersToFileEnabled) {
 		return;
 	}
 
-	obs_output_t *output = obs_frontend_get_recording_output();
-	if (!output) {
-		blog(LOG_ERROR,
-		     "[StreamUP Record Chapter Manager] Could not get the recording output.");
-		return;
-	}
-
-	obs_data_t *settings = obs_output_get_settings(output);
-	if (!settings) {
-		blog(LOG_ERROR,
-		     "[StreamUP Record Chapter Manager] Could not get the recording output settings.");
-		obs_output_release(output);
-		return;
-	}
-
-	const char *recording_path = obs_data_get_string(settings, "path");
-	if (!recording_path || strlen(recording_path) == 0) {
-		blog(LOG_ERROR,
-		     "[StreamUP Record Chapter Manager] Could not get the recording output path.");
-		obs_data_release(settings);
-		obs_output_release(output);
-		return;
-	}
-
-	QString outputPath = QString::fromUtf8(recording_path);
-	obs_data_release(settings);
-	obs_output_release(output);
-
-	blog(LOG_INFO, "[StreamUP Record Chapter Manager] Recording path: %s",
-	     QT_TO_UTF8(outputPath));
-
-	QFileInfo fileInfo(outputPath);
-	QString baseName = fileInfo.completeBaseName();
-	QString directoryPath = fileInfo.absolutePath();
-
-	if (chapterMarkerDock->exportChaptersToTextEnabled) {
-		QString chapterFilePath =
-			directoryPath + "/" + baseName + "_chapters.txt";
-		QFile file(chapterFilePath);
-		if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
-			QTextStream out(&file);
-			out << "Chapter Markers for " << baseName << "\n";
-			file.close();
-			blog(LOG_INFO,
-			     "[StreamUP Record Chapter Manager] Created chapter file: %s",
-			     QT_TO_UTF8(chapterFilePath));
-			chapterMarkerDock->setExportFilePath(chapterFilePath);
-		} else {
-			blog(LOG_ERROR,
-			     "[StreamUP Record Chapter Manager] Failed to create chapter file: %s",
-			     QT_TO_UTF8(chapterFilePath));
-		}
-	}
-
-	if (chapterMarkerDock->exportChaptersToXMLEnabled) {
-		QString xmlFilePath =
-			directoryPath + "/" + baseName + "_chapters.xml";
-		QFile xmlFile(xmlFilePath);
-		if (xmlFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
-			QTextStream out(&xmlFile);
-			out << "<ChapterMarkers>\n";
-			out << "  <Title>" << baseName << "</Title>\n";
-			out << "</ChapterMarkers>\n";
-			xmlFile.close();
-			blog(LOG_INFO,
-			     "[StreamUP Record Chapter Manager] Created XML chapter file: %s",
-			     QT_TO_UTF8(xmlFilePath));
-			chapterMarkerDock->setExportXMLFilePath(xmlFilePath);
-		} else {
-			blog(LOG_ERROR,
-			     "[StreamUP Record Chapter Manager] Failed to create XML chapter file: %s",
-			     QT_TO_UTF8(xmlFilePath));
-		}
-	}
+	chapterMarkerDock->createExportFiles();
 
 	QString timestamp = chapterMarkerDock->getCurrentRecordingTime();
 	chapterMarkerDock->addChapterMarker("Start", "Recording");
@@ -148,12 +75,15 @@ static void FrontEndEventHandler(enum obs_frontend_event event, void *)
 	case OBS_FRONTEND_EVENT_RECORDING_STARTED:
 		if (chapterMarkerDock) {
 			chapterMarkerDock->updateCurrentChapterLabel("Start");
-			CreateChapterFiles();
+			OnStartRecording();
 		}
 		break;
 	case OBS_FRONTEND_EVENT_RECORDING_STOPPED:
 		if (chapterMarkerDock) {
-			chapterMarkerDock->setNoRecordingActive();
+			chapterMarkerDock->showFeedbackMessage(
+				"Recording is not active. Chapter marker not added.",
+				true);
+			;
 			chapterMarkerDock->showFeedbackMessage("Recording finished.",
 							 false);
 		}
@@ -189,7 +119,9 @@ void AddDefaultChapterMarkerHotkey(void *data, obs_hotkey_id id, obs_hotkey_t *h
 	if (!pressed)
 		return;
 	if (!obs_frontend_recording_active()) {
-		chapterMarkerDock->setNoRecordingActive();
+		chapterMarkerDock->showFeedbackMessage(
+			"Recording is not active. Chapter marker not added.",
+			true);
 		chapterMarkerDock->showFeedbackMessage(
 			"Recording is not active. Chapter marker not added.",
 			true);
@@ -235,10 +167,6 @@ obs_data_t *SaveLoadSettingsCallback(obs_data_t *save_data, bool saving)
 			obs_data_set_string(data, "default_chapter_name",
 					    "Chapter");
 			obs_data_set_bool(data, "export_chapters_enabled",
-					  false);
-			obs_data_set_bool(
-				data, "chapter_on_scene_change_enabled", false);
-			obs_data_set_bool(data, "show_chapter_history_enabled",
 					  false);
 
 			if (obs_data_save_json(data, configPath)) {
