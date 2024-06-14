@@ -217,29 +217,29 @@ obs_data_t *SaveLoadSettingsCallback(obs_data_t *save_data, bool saving)
 			     addChapterSourceEnabled ? "true" : "false");
 
 			// Log the ignored scenes array
-			blog(LOG_INFO, "ignored_scenes:");
+			//blog(LOG_INFO, "ignored_scenes:");
 
-			obs_data_array_t *ignoredScenesArray =
-				obs_data_get_array(data, "ignored_scenes");
-			if (ignoredScenesArray) {
-				size_t count = obs_data_array_count(
-					ignoredScenesArray);
-				for (size_t i = 0; i < count; ++i) {
-					obs_data_t *sceneData =
-						obs_data_array_item(
-							ignoredScenesArray, i);
-					const char *sceneName =
-						obs_data_get_string(
-							sceneData,
-							"scene_name");
-					if (sceneName) {
-						blog(LOG_INFO, "  %s",
-						     sceneName);
-					}
-					obs_data_release(sceneData);
-				}
-				obs_data_array_release(ignoredScenesArray);
-			}
+			//obs_data_array_t *ignoredScenesArray =
+			//	obs_data_get_array(data, "ignored_scenes");
+			//if (ignoredScenesArray) {
+			//	size_t count = obs_data_array_count(
+			//		ignoredScenesArray);
+			//	for (size_t i = 0; i < count; ++i) {
+			//		obs_data_t *sceneData =
+			//			obs_data_array_item(
+			//				ignoredScenesArray, i);
+			//		const char *sceneName =
+			//			obs_data_get_string(
+			//				sceneData,
+			//				"scene_name");
+			//		if (sceneName) {
+			//			blog(LOG_INFO, "  %s",
+			//			     sceneName);
+			//		}
+			//		obs_data_release(sceneData);
+			//	}
+			//	obs_data_array_release(ignoredScenesArray);
+			//}
 		}
 	}
 
