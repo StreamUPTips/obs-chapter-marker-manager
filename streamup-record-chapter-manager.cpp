@@ -56,9 +56,9 @@ static void LoadChapterMarkerDock()
 	}
 }
 
-static void CreateChapterFile()
+static void CreateChapterFiles()
 {
-	if (!chapterMarkerDock || !chapterMarkerDock->exportChaptersEnabled) {
+	if (!chapterMarkerDock) {
 		return;
 	}
 
@@ -95,25 +95,54 @@ static void CreateChapterFile()
 
 	QFileInfo fileInfo(outputPath);
 	QString baseName = fileInfo.completeBaseName();
-	QString chapterFilePath =
-		fileInfo.absolutePath() + "/" + baseName + "_chapters.txt";
+	QString directoryPath = fileInfo.absolutePath();
 
-	QFile file(chapterFilePath);
-	if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
-		QTextStream out(&file);
-		out << "Chapter Markers for " << baseName << "\n";
-		file.close();
-		blog(LOG_INFO,
-		     "[StreamUP Record Chapter Manager] Created chapter file: %s",
-		     QT_TO_UTF8(chapterFilePath));
+	if (chapterMarkerDock->exportChaptersToTextEnabled) {
+		QString chapterFilePath =
+			directoryPath + "/" + baseName + "_chapters.txt";
+		QFile file(chapterFilePath);
+		if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+			QTextStream out(&file);
+			out << "Chapter Markers for " << baseName << "\n";
+			file.close();
+			blog(LOG_INFO,
+			     "[StreamUP Record Chapter Manager] Created chapter file: %s",
+			     QT_TO_UTF8(chapterFilePath));
+			chapterMarkerDock->setExportFilePath(chapterFilePath);
+			QString timestamp =
+				chapterMarkerDock->getCurrentRecordingTime();
+			chapterMarkerDock->addChapterMarker("Start",
+							    "Recording");
+		} else {
+			blog(LOG_ERROR,
+			     "[StreamUP Record Chapter Manager] Failed to create chapter file: %s",
+			     QT_TO_UTF8(chapterFilePath));
+		}
+	}
 
-		chapterMarkerDock->setChapterFilePath(chapterFilePath);
-		QString timestamp = chapterMarkerDock->getCurrentRecordingTime();
-		chapterMarkerDock->addChapterMarker("Start", "Recording");
-	} else {
-		blog(LOG_ERROR,
-		     "[StreamUP Record Chapter Manager] Failed to create chapter file: %s",
-		     QT_TO_UTF8(chapterFilePath));
+	if (chapterMarkerDock->exportChaptersToXMLEnabled) {
+		QString xmlFilePath =
+			directoryPath + "/" + baseName + "_chapters.xml";
+		QFile xmlFile(xmlFilePath);
+		if (xmlFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
+			QTextStream out(&xmlFile);
+			out << "<ChapterMarkers>\n";
+			out << "  <Title>" << baseName << "</Title>\n";
+			out << "</ChapterMarkers>\n";
+			xmlFile.close();
+			blog(LOG_INFO,
+			     "[StreamUP Record Chapter Manager] Created XML chapter file: %s",
+			     QT_TO_UTF8(xmlFilePath));
+			chapterMarkerDock->setExportXMLFilePath(xmlFilePath);
+			QString timestamp =
+				chapterMarkerDock->getCurrentRecordingTime();
+			chapterMarkerDock->addChapterMarker("Start",
+							    "Recording");
+		} else {
+			blog(LOG_ERROR,
+			     "[StreamUP Record Chapter Manager] Failed to create XML chapter file: %s",
+			     QT_TO_UTF8(xmlFilePath));
+		}
 	}
 }
 
@@ -123,7 +152,7 @@ static void FrontEndEventHandler(enum obs_frontend_event event, void *)
 	case OBS_FRONTEND_EVENT_RECORDING_STARTED:
 		if (chapterMarkerDock) {
 			chapterMarkerDock->updateCurrentChapterLabel("Start");
-			CreateChapterFile();
+			CreateChapterFiles();
 		}
 		break;
 	case OBS_FRONTEND_EVENT_RECORDING_STOPPED:

@@ -26,9 +26,12 @@ public:
 	ChapterMarkerDock(QWidget *parent = nullptr);
 	~ChapterMarkerDock();
 
-	// Public interface
 	QString getChapterName() const;
-	void setChapterFilePath(const QString &filePath);
+	void setExportFilePath(const QString &filePath);
+	void setExportXMLFilePath(const QString &filePath);
+	void writeChapterToXMLFile(const QString &chapterName,
+				   const QString &timestamp,
+				   const QString &chapterSource);
 	void setAddChapterSourceEnabled(bool enabled);
 	bool isAddChapterSourceEnabled() const;
 
@@ -39,13 +42,15 @@ public:
 	void setNoRecordingActive();
 	void showFeedbackMessage(const QString &message, bool isError);
 	void clearChapterHistory();
-	void writeChapterToFile(const QString &chapterName,
-				const QString &timestamp,
-				const QString &chapterSource);
+	void writeChapterToTextFile(const QString &chapterName,
+				    const QString &timestamp,
+				    const QString &chapterSource);
 	void addChapterMarker(const QString &chapterName,
 			      const QString &chapterSource);
-	bool exportChaptersEnabled;
+	bool exportChaptersToTextEnabled;
+	bool exportChaptersToXMLEnabled; // Add this
 	QString chapterFilePath;
+	QString xmlFilePath; // Add this
 	QString defaultChapterName;
 	QStringList ignoredScenes;
 	bool chapterOnSceneChangeEnabled;
@@ -55,15 +60,16 @@ public:
 	void applySettings(obs_data_t *settings);
 
 	void setAnnotationDock(AnnotationDock *dock);
-	void writeAnnotationToFile(const QString &chapterName,
-				   const QString &timestamp,
-				   const QString &chapterSource);
+	void writeAnnotationToFiles(const QString &chapterName,
+				    const QString &timestamp,
+				    const QString &chapterSource);
 	void applyThemeIDToButton(QPushButton *button, const QString &themeID);
 
 public slots:
 	void onAddChapterMarkerButton();
 	void onSettingsClicked();
-	void onAnnotationClicked(bool startup); // New slot for annotation button
+	void
+	onAnnotationClicked(bool startup); // New slot for annotation button
 	void onSceneChanged();
 	void onRecordingStopped();
 	void onHistoryItemSelected();
@@ -101,7 +107,8 @@ private:
 	QDialog *settingsDialog;
 	QLineEdit *defaultChapterNameEdit;
 	QCheckBox *showChapterHistoryCheckbox;
-	QCheckBox *exportChaptersCheckbox;
+	QCheckBox *exportChaptersToTextCheckbox;
+	QCheckBox *exportChaptersToXMLCheckbox; // Add this
 	QCheckBox *addChapterSourceCheckbox;
 	QCheckBox *chapterOnSceneChangeCheckbox;
 	QListWidget *ignoredScenesListWidget;

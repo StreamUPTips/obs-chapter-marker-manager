@@ -32,12 +32,12 @@ ChapterMarkerDock::ChapterMarkerDock(QWidget *parent)
 	  settingsDialog(nullptr),
 	  chapterOnSceneChangeCheckbox(nullptr),
 	  showChapterHistoryCheckbox(nullptr),
-	  exportChaptersCheckbox(nullptr),
+	  exportChaptersToTextCheckbox(nullptr),
 	  addChapterSourceCheckbox(nullptr),
 	  ignoredScenesListWidget(nullptr),
 	  chapterOnSceneChangeEnabled(false),
 	  showChapterHistoryEnabled(false),
-	  exportChaptersEnabled(false),
+	  exportChaptersToTextEnabled(false),
 	  addChapterSourceEnabled(false),
 	  chapterHistoryList(new QListWidget(this)),
 	  defaultChapterName("Chapter"),
@@ -253,7 +253,7 @@ void ChapterMarkerDock::onRecordingStopped()
 	showFeedbackMessage("Recording finished", false);
 
 	QString timestamp = getCurrentRecordingTime();
-	writeChapterToFile("End", timestamp, "Recording");
+	writeChapterToTextFile("End", timestamp, "Recording");
 
 	clearChapterHistory();
 	blog(LOG_INFO, "[StreamUP Record Chapter Manager] chapterCount: %d",
@@ -312,11 +312,11 @@ void ChapterMarkerDock::clearChapterHistory()
 	timestamps.clear();
 }
 
-void ChapterMarkerDock::writeChapterToFile(const QString &chapterName,
+void ChapterMarkerDock::writeChapterToTextFile(const QString &chapterName,
 					   const QString &timestamp,
 					   const QString &chapterSource)
 {
-	if (!exportChaptersEnabled) {
+	if (!exportChaptersToTextEnabled) {
 		return;
 	}
 
@@ -346,7 +346,7 @@ void ChapterMarkerDock::writeChapterToFile(const QString &chapterName,
 	}
 }
 
-void ChapterMarkerDock::setChapterFilePath(const QString &filePath)
+void ChapterMarkerDock::setExportFilePath(const QString &filePath)
 {
 	chapterFilePath = filePath;
 }
@@ -404,9 +404,14 @@ void ChapterMarkerDock::addChapterMarker(const QString &chapterName,
 		QString timestamp = getCurrentRecordingTime();
 
 		// Always write to the chapter file if enabled
-		if (exportChaptersEnabled) {
-			writeChapterToFile(chapterName, timestamp,
-					   chapterSource);
+		if (exportChaptersToTextEnabled) {
+			writeChapterToTextFile(chapterName, timestamp,
+					       chapterSource);
+		}
+
+		if (exportChaptersToXMLEnabled) {
+			writeChapterToXMLFile(chapterName, timestamp,
+					      chapterSource);
 		}
 
 		blog(LOG_INFO,
@@ -505,7 +510,7 @@ QDialog *ChapterMarkerDock::createSettingsDialog()
 			chapterOnSceneChangeCheckbox->isChecked();
 		showChapterHistoryEnabled =
 			showChapterHistoryCheckbox->isChecked();
-		exportChaptersEnabled = exportChaptersCheckbox->isChecked();
+		exportChaptersToTextEnabled = exportChaptersToTextCheckbox->isChecked();
 		addChapterSourceEnabled = addChapterSourceCheckbox->isChecked();
 		defaultChapterName =
 			defaultChapterNameEdit->text().isEmpty()
@@ -551,9 +556,13 @@ void ChapterMarkerDock::setupGeneralSettingsGroup(QVBoxLayout *mainLayout)
 		new QCheckBox("Show chapter history", generalSettingsGroup);
 	generalSettingsLayout->addWidget(showChapterHistoryCheckbox);
 
-	exportChaptersCheckbox = new QCheckBox("Export chapters to .txt file",
+	exportChaptersToTextCheckbox = new QCheckBox("Export chapters to .txt file",
 					       generalSettingsGroup);
-	generalSettingsLayout->addWidget(exportChaptersCheckbox);
+	generalSettingsLayout->addWidget(exportChaptersToTextCheckbox);
+
+		exportChaptersToXMLCheckbox = new QCheckBox(
+		"Export chapters to .xml file", generalSettingsGroup);
+	generalSettingsLayout->addWidget(exportChaptersToXMLCheckbox);
 
 	addChapterSourceCheckbox = new QCheckBox("Add chapter trigger source",
 						 generalSettingsGroup);
@@ -609,7 +618,9 @@ void ChapterMarkerDock::saveSettingsAndCloseDialog()
 	obs_data_set_bool(saveData, "show_chapter_history_enabled",
 			  showChapterHistoryCheckbox->isChecked());
 	obs_data_set_bool(saveData, "export_chapters_enabled",
-			  exportChaptersCheckbox->isChecked());
+			  exportChaptersToTextCheckbox->isChecked());
+	obs_data_set_bool(saveData, "export_chapters_to_xml_enabled",
+			  exportChaptersToXMLCheckbox->isChecked());
 	obs_data_set_bool(saveData, "add_chapter_source_enabled",
 			  addChapterSourceCheckbox->isChecked());
 	obs_data_set_string(
@@ -637,6 +648,8 @@ void ChapterMarkerDock::saveSettingsAndCloseDialog()
 	// Add the array of ignored scenes to the save data
 	obs_data_set_array(saveData, "ignored_scenes", ignoredScenesArray);
 
+	exportChaptersToXMLEnabled = exportChaptersToXMLCheckbox->isChecked();
+
 	// Save settings
 	SaveLoadSettingsCallback(saveData, true);
 
@@ -645,7 +658,7 @@ void ChapterMarkerDock::saveSettingsAndCloseDialog()
 	obs_data_release(saveData);
 
 	// Check if export chapters is disabled and annotation dock exists
-	if (!exportChaptersCheckbox->isChecked() && annotationDock) {
+	if (!exportChaptersToTextCheckbox->isChecked() && annotationDock) {
 		const char *dock_id = "AnnotationDock";
 		obs_frontend_remove_dock(dock_id);
 		annotationDock = nullptr;
@@ -659,13 +672,15 @@ void ChapterMarkerDock::saveSettingsAndCloseDialog()
 void ChapterMarkerDock::initialiseSettingsDialog()
 {
 	if (chapterOnSceneChangeCheckbox && showChapterHistoryCheckbox &&
-	    exportChaptersCheckbox && addChapterSourceCheckbox &&
-	    ignoredScenesListWidget) {
+	    exportChaptersToTextCheckbox && exportChaptersToXMLCheckbox &&
+	    addChapterSourceCheckbox && ignoredScenesListWidget) {
 		chapterOnSceneChangeCheckbox->setChecked(
 			chapterOnSceneChangeEnabled);
 		showChapterHistoryCheckbox->setChecked(
 			showChapterHistoryEnabled);
-		exportChaptersCheckbox->setChecked(exportChaptersEnabled);
+		exportChaptersToTextCheckbox->setChecked(exportChaptersToTextEnabled);
+		exportChaptersToXMLCheckbox->setChecked(
+			exportChaptersToXMLEnabled);
 		addChapterSourceCheckbox->setChecked(addChapterSourceEnabled);
 		defaultChapterNameEdit->setText(defaultChapterName);
 
@@ -724,8 +739,10 @@ void ChapterMarkerDock::applySettings(obs_data_t *settings)
 		obs_data_get_bool(settings, "chapter_on_scene_change_enabled");
 	showChapterHistoryEnabled =
 		obs_data_get_bool(settings, "show_chapter_history_enabled");
-	exportChaptersEnabled =
+	exportChaptersToTextEnabled =
 		obs_data_get_bool(settings, "export_chapters_enabled");
+	exportChaptersToXMLEnabled =
+		obs_data_get_bool(settings, "export_chapters_to_xml_enabled");
 	addChapterSourceEnabled =
 		obs_data_get_bool(settings, "add_chapter_source_enabled");
 	defaultChapterName = QString::fromUtf8(
@@ -756,7 +773,7 @@ void ChapterMarkerDock::applySettings(obs_data_t *settings)
 
 void ChapterMarkerDock::onAnnotationClicked(bool startup)
 {
-	if (!exportChaptersEnabled && !startup) {
+	if (!exportChaptersToTextEnabled && !startup) {
 		showFeedbackMessage(
 			"Please turn on 'Export chapters to .txt file' in settings to use Annotations.",
 			true);
@@ -807,11 +824,11 @@ void ChapterMarkerDock::setAnnotationDock(AnnotationDock *dock)
 	annotationDock = dock;
 }
 
-void ChapterMarkerDock::writeAnnotationToFile(const QString &annotationText,
+void ChapterMarkerDock::writeAnnotationToFiles(const QString &annotationText,
 					      const QString &timestamp,
 					      const QString &chapterSource)
 {
-	if (!exportChaptersEnabled) {
+	if (!exportChaptersToTextEnabled) {
 		return;
 	}
 
@@ -843,4 +860,46 @@ void ChapterMarkerDock::applyThemeIDToButton(QPushButton *button,
 	button->setIconSize(QSize(20, 20));
 	button->style()->unpolish(button);
 	button->style()->polish(button);
+}
+
+void ChapterMarkerDock::setExportXMLFilePath(const QString &filePath)
+{
+	xmlFilePath = filePath;
+}
+
+void ChapterMarkerDock::writeChapterToXMLFile(const QString &chapterName,
+					      const QString &timestamp,
+					      const QString &chapterSource)
+{
+	if (!exportChaptersToXMLEnabled) {
+		return;
+	}
+
+	if (xmlFilePath.isEmpty()) {
+		blog(LOG_ERROR,
+		     "[StreamUP Record Chapter Manager] XML file path is not set.");
+		return;
+	}
+
+	QFile file(xmlFilePath);
+	if (file.open(QIODevice::Append | QIODevice::Text)) {
+		QTextStream out(&file);
+		QString fullChapterName = chapterName;
+
+		if (addChapterSourceEnabled &&
+		    !chapterName.contains(chapterSource)) {
+			fullChapterName += " (" + chapterSource + ")";
+		}
+
+		out << "<Chapter>\n";
+		out << "  <Timestamp>" << timestamp << "</Timestamp>\n";
+		out << "  <Name>" << fullChapterName << "</Name>\n";
+		out << "</Chapter>\n";
+
+		file.close();
+	} else {
+		blog(LOG_ERROR,
+		     "[StreamUP Record Chapter Manager] Failed to open XML file: %s",
+		     QT_TO_UTF8(xmlFilePath));
+	}
 }
