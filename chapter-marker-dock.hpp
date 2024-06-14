@@ -119,7 +119,7 @@ private:
 	QGroupBox *previousChaptersGroup;
 
 	QLineEdit *defaultChapterNameEdit;
-	QCheckBox *showChapterHistoryCheckbox;
+	QCheckBox *showPreviousChaptersCheckbox;
 	QCheckBox *addChapterSourceCheckbox;
 	QCheckBox *chapterOnSceneChangeCheckbox;
 	QListWidget *ignoredScenesListWidget;

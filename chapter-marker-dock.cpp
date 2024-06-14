@@ -31,7 +31,7 @@ ChapterMarkerDock::ChapterMarkerDock(QWidget *parent)
 	  feedbackLabel(new QLabel("", this)),
 	  settingsDialog(nullptr),
 	  chapterOnSceneChangeCheckbox(nullptr),
-	  showChapterHistoryCheckbox(nullptr),
+	  showPreviousChaptersCheckbox(nullptr),
 	  exportChaptersToTextCheckbox(nullptr),
 	  addChapterSourceCheckbox(nullptr),
 	  ignoredScenesListWidget(nullptr),
@@ -413,9 +413,9 @@ void ChapterMarkerDock::setupSettingsGeneralGroup(QVBoxLayout *mainLayout)
 	// Add the horizontal layout to the general settings layout
 	generalSettingsLayout->addLayout(chapterNameLayout);
 
-	showChapterHistoryCheckbox =
+	showPreviousChaptersCheckbox =
 		new QCheckBox("Show chapter history", generalSettingsGroup);
-	generalSettingsLayout->addWidget(showChapterHistoryCheckbox);
+	generalSettingsLayout->addWidget(showPreviousChaptersCheckbox);
 
 	addChapterSourceCheckbox = new QCheckBox("Add chapter trigger source",
 						 generalSettingsGroup);
@@ -512,13 +512,13 @@ void ChapterMarkerDock::setupSettingsAutoChapterGroup(QVBoxLayout *mainLayout)
 
 void ChapterMarkerDock::initialiseSettingsDialog()
 {
-	if (chapterOnSceneChangeCheckbox && showChapterHistoryCheckbox &&
+	if (chapterOnSceneChangeCheckbox && showPreviousChaptersCheckbox &&
 	    exportChaptersToFileCheckbox && exportChaptersToTextCheckbox &&
 	    exportChaptersToXMLCheckbox && addChapterSourceCheckbox) {
 
 		chapterOnSceneChangeCheckbox->setChecked(
 			chapterOnSceneChangeEnabled);
-		showChapterHistoryCheckbox->setChecked(
+		showPreviousChaptersCheckbox->setChecked(
 			showPreviousChaptersEnabled);
 		exportChaptersToFileCheckbox->setChecked(
 			exportChaptersToFileEnabled);
@@ -529,10 +529,10 @@ void ChapterMarkerDock::initialiseSettingsDialog()
 		addChapterSourceCheckbox->setChecked(addChapterSourceEnabled);
 		defaultChapterNameEdit->setText(defaultChapterName);
 
-		exportChaptersToTextCheckbox->setEnabled(
-			exportChaptersToFileEnabled);
-		exportChaptersToXMLCheckbox->setEnabled(
-			exportChaptersToFileEnabled);
+		exportChaptersToTextCheckbox->setChecked(
+			exportChaptersToTextEnabled);
+		exportChaptersToXMLCheckbox->setChecked(
+			exportChaptersToXMLEnabled);
 	}
 }
 
@@ -543,7 +543,7 @@ void ChapterMarkerDock::saveSettingsAndCloseDialog()
 	obs_data_set_bool(saveData, "chapter_on_scene_change_enabled",
 			  chapterOnSceneChangeCheckbox->isChecked());
 	obs_data_set_bool(saveData, "show_chapter_history_enabled",
-			  showChapterHistoryCheckbox->isChecked());
+			  showPreviousChaptersCheckbox->isChecked());
 	obs_data_set_bool(saveData, "export_chapters_to_file_enabled",
 			  exportChaptersToFileCheckbox->isChecked());
 	obs_data_set_bool(saveData, "export_chapters_to_text_enabled",
