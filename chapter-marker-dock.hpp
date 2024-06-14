@@ -92,7 +92,6 @@ private:
 	void setupSettingsAutoChapterGroup(QVBoxLayout *mainLayout);
 	void initialiseSettingsDialog();
 	void populateIgnoredScenesListWidget();
-	void updatePreviousChaptersVisibility(bool visible);
 	QCheckBox *exportChaptersToFileCheckbox;
 	QCheckBox *exportChaptersToTextCheckbox;
 	QCheckBox *exportChaptersToXMLCheckbox;

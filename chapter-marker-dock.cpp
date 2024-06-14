@@ -368,7 +368,6 @@ QDialog *ChapterMarkerDock::createSettingsUI()
 	setupSettingsExportGroup(mainLayout);
 	setupSettingsAutoChapterGroup(mainLayout);
 
-	// Add Ok and Cancel buttons
 	QDialogButtonBox *buttonBox = new QDialogButtonBox(
 		QDialogButtonBox::Ok | QDialogButtonBox::Cancel,
 		settingsDialog);
@@ -378,13 +377,8 @@ QDialog *ChapterMarkerDock::createSettingsUI()
 		&QDialog::reject);
 	mainLayout->addWidget(buttonBox);
 
-	previousChaptersGroup->setVisible(showPreviousChaptersEnabled);
-
-	// Set the size policy to Preferred for width and Fixed for height
 	settingsDialog->setSizePolicy(QSizePolicy::Preferred,
 				      QSizePolicy::Fixed);
-
-	// Adjust the dialog size initially to fit the contents
 	settingsDialog->adjustSize();
 
 	return settingsDialog;
@@ -529,10 +523,12 @@ void ChapterMarkerDock::initialiseSettingsDialog()
 		addChapterSourceCheckbox->setChecked(addChapterSourceEnabled);
 		defaultChapterNameEdit->setText(defaultChapterName);
 
-		exportChaptersToTextCheckbox->setChecked(
+		// Ensure visibility matches the settings
+		exportChaptersToTextCheckbox->setVisible(
 			exportChaptersToTextEnabled);
-		exportChaptersToXMLCheckbox->setChecked(
+		exportChaptersToXMLCheckbox->setVisible(
 			exportChaptersToXMLEnabled);
+		setIgnoredScenesButton->setVisible(chapterOnSceneChangeEnabled);
 	}
 }
 
@@ -542,7 +538,7 @@ void ChapterMarkerDock::saveSettingsAndCloseDialog()
 
 	obs_data_set_bool(saveData, "chapter_on_scene_change_enabled",
 			  chapterOnSceneChangeCheckbox->isChecked());
-	obs_data_set_bool(saveData, "show_chapter_history_enabled",
+	obs_data_set_bool(saveData, "show_previous_chapters_enabled",
 			  showPreviousChaptersCheckbox->isChecked());
 	obs_data_set_bool(saveData, "export_chapters_to_file_enabled",
 			  exportChaptersToFileCheckbox->isChecked());
@@ -581,7 +577,7 @@ void ChapterMarkerDock::applySettings(obs_data_t *settings)
 	chapterOnSceneChangeEnabled =
 		obs_data_get_bool(settings, "chapter_on_scene_change_enabled");
 	showPreviousChaptersEnabled =
-		obs_data_get_bool(settings, "show_chapter_history_enabled");
+		obs_data_get_bool(settings, "show_previous_chapters_enabled");
 	exportChaptersToFileEnabled =
 		obs_data_get_bool(settings, "export_chapters_to_file_enabled");
 	exportChaptersToTextEnabled =
