@@ -58,7 +58,8 @@ static void LoadChapterMarkerDock()
 
 static void CreateChapterFiles()
 {
-	if (!chapterMarkerDock) {
+	if (!chapterMarkerDock ||
+	    !chapterMarkerDock->exportChaptersToFileEnabled) {
 		return;
 	}
 
@@ -109,10 +110,6 @@ static void CreateChapterFiles()
 			     "[StreamUP Record Chapter Manager] Created chapter file: %s",
 			     QT_TO_UTF8(chapterFilePath));
 			chapterMarkerDock->setExportFilePath(chapterFilePath);
-			QString timestamp =
-				chapterMarkerDock->getCurrentRecordingTime();
-			chapterMarkerDock->addChapterMarker("Start",
-							    "Recording");
 		} else {
 			blog(LOG_ERROR,
 			     "[StreamUP Record Chapter Manager] Failed to create chapter file: %s",
@@ -134,16 +131,15 @@ static void CreateChapterFiles()
 			     "[StreamUP Record Chapter Manager] Created XML chapter file: %s",
 			     QT_TO_UTF8(xmlFilePath));
 			chapterMarkerDock->setExportXMLFilePath(xmlFilePath);
-			QString timestamp =
-				chapterMarkerDock->getCurrentRecordingTime();
-			chapterMarkerDock->addChapterMarker("Start",
-							    "Recording");
 		} else {
 			blog(LOG_ERROR,
 			     "[StreamUP Record Chapter Manager] Failed to create XML chapter file: %s",
 			     QT_TO_UTF8(xmlFilePath));
 		}
 	}
+
+	QString timestamp = chapterMarkerDock->getCurrentRecordingTime();
+	chapterMarkerDock->addChapterMarker("Start", "Recording");
 }
 
 static void FrontEndEventHandler(enum obs_frontend_event event, void *)

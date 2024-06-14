@@ -49,6 +49,7 @@ public:
 			      const QString &chapterSource);
 	bool exportChaptersToTextEnabled;
 	bool exportChaptersToXMLEnabled; // Add this
+	bool exportChaptersToFileEnabled;
 	QString chapterFilePath;
 	QString xmlFilePath; // Add this
 	QString defaultChapterName;
@@ -92,6 +93,12 @@ private:
 	void initialiseSettingsDialog();
 	void populateIgnoredScenesListWidget();
 	void updatePreviousChaptersVisibility(bool visible);
+	QCheckBox *exportChaptersToFileCheckbox;
+	QCheckBox *exportChaptersToTextCheckbox;
+	QCheckBox *exportChaptersToXMLCheckbox;
+	QGroupBox *exportSettingsGroup;
+	void setupExportSettingsGroup(QVBoxLayout *mainLayout);
+	void onExportChaptersToFileToggled(bool checked);
 
 	QLineEdit *chapterNameEdit;
 	QPushButton *saveButton;
@@ -107,8 +114,6 @@ private:
 	QDialog *settingsDialog;
 	QLineEdit *defaultChapterNameEdit;
 	QCheckBox *showChapterHistoryCheckbox;
-	QCheckBox *exportChaptersToTextCheckbox;
-	QCheckBox *exportChaptersToXMLCheckbox; // Add this
 	QCheckBox *addChapterSourceCheckbox;
 	QCheckBox *chapterOnSceneChangeCheckbox;
 	QListWidget *ignoredScenesListWidget;
