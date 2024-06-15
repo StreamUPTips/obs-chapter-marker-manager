@@ -182,123 +182,63 @@ obs_data_t *SaveLoadSettingsCallback(obs_data_t *save_data, bool saving)
 			blog(LOG_INFO,
 			     "[StreamUP Record Chapter Manager] Settings loaded successfully from %s",
 			     configPath);
-
-			// Log the loaded settings
-			const char *defaultChapterName = obs_data_get_string(
-				data, "default_chapter_name");
-			bool chapterOnSceneChangeEnabled = obs_data_get_bool(
-				data, "chapter_on_scene_change_enabled");
-			bool showPreviousChaptersEnabled = obs_data_get_bool(
-				data, "show_chapter_history_enabled");
-			bool exportChaptersToFileEnabled = obs_data_get_bool(
-				data, "export_chapters_to_file_enabled");
-			bool exportChaptersToTextEnabled = obs_data_get_bool(
-				data, "export_chapters_to_text_enabled");
-			bool exportChaptersToXMLEnabled = obs_data_get_bool(
-				data, "export_chapters_to_xml_enabled");
-			bool addChapterSourceEnabled = obs_data_get_bool(
-				data, "add_chapter_source_enabled");
-
-			blog(LOG_INFO,
-			     "[StreamUP Record Chapter Manager] Loaded settings:");
-			blog(LOG_INFO, "default_chapter_name: %s",
-			     defaultChapterName);
-			blog(LOG_INFO, "chapter_on_scene_change_enabled: %s",
-			     chapterOnSceneChangeEnabled ? "true" : "false");
-			blog(LOG_INFO, "show_chapter_history_enabled: %s",
-			     showPreviousChaptersEnabled ? "true" : "false");
-			blog(LOG_INFO, "export_chapters_to_file_enabled: %s",
-			     exportChaptersToFileEnabled ? "true" : "false");
-			blog(LOG_INFO, "export_chapters_to_text_enabled: %s",
-			     exportChaptersToTextEnabled ? "true" : "false");
-			blog(LOG_INFO, "export_chapters_to_xml_enabled: %s",
-			     exportChaptersToXMLEnabled ? "true" : "false");
-			blog(LOG_INFO, "add_chapter_source_enabled: %s",
-			     addChapterSourceEnabled ? "true" : "false");
-
-			// Log the ignored scenes array
-			//blog(LOG_INFO, "ignored_scenes:");
-
-			//obs_data_array_t *ignoredScenesArray =
-			//	obs_data_get_array(data, "ignored_scenes");
-			//if (ignoredScenesArray) {
-			//	size_t count = obs_data_array_count(
-			//		ignoredScenesArray);
-			//	for (size_t i = 0; i < count; ++i) {
-			//		obs_data_t *sceneData =
-			//			obs_data_array_item(
-			//				ignoredScenesArray, i);
-			//		const char *sceneName =
-			//			obs_data_get_string(
-			//				sceneData,
-			//				"scene_name");
-			//		if (sceneName) {
-			//			blog(LOG_INFO, "  %s",
-			//			     sceneName);
-			//		}
-			//		obs_data_release(sceneData);
-			//	}
-			//	obs_data_array_release(ignoredScenesArray);
-			//}
 		}
 	}
 
-		bfree(configPath);
-		return data;
+	bfree(configPath);
+	return data;
+}
+
+//--------------------STARTUP COMMANDS--------------------
+static void RegisterHotkeys()
+{
+	addDefaultChapterMarkerHotkey = obs_hotkey_register_frontend(
+		"addDefaultChapterMarker",
+		obs_module_text("AddDefaultChapterMarker"),
+		AddDefaultChapterMarkerHotkey, chapterMarkerDock);
+}
+
+bool obs_module_load()
+{
+	blog(LOG_INFO, "[StreamUP Record Chapter Manager] loaded version %s",
+	     PROJECT_VERSION);
+
+	RegisterHotkeys();
+	obs_frontend_add_save_callback(SaveLoadHotkeys, nullptr);
+	obs_frontend_add_event_callback(FrontEndEventHandler, nullptr);
+
+	LoadChapterMarkerDock();
+
+	obs_data_t *settings = SaveLoadSettingsCallback(nullptr, false);
+
+	if (settings) {
+		chapterMarkerDock->LoadSettings(settings);
+		obs_data_release(settings);
 	}
 
-	//--------------------STARTUP COMMANDS--------------------
-	static void RegisterHotkeys()
-	{
-		addDefaultChapterMarkerHotkey = obs_hotkey_register_frontend(
-			"addDefaultChapterMarker",
-			obs_module_text("AddDefaultChapterMarker"),
-			AddDefaultChapterMarkerHotkey, chapterMarkerDock);
-	}
+	return true;
+}
 
-	bool obs_module_load()
-	{
-		blog(LOG_INFO,
-		     "[StreamUP Record Chapter Manager] loaded version %s",
-		     PROJECT_VERSION);
+void obs_module_post_load(void)
+{
+	chapterMarkerDock->refreshMainDockUI();
+}
 
-		RegisterHotkeys();
-		obs_frontend_add_save_callback(SaveLoadHotkeys, nullptr);
-		obs_frontend_add_event_callback(FrontEndEventHandler, nullptr);
+//--------------------EXIT COMMANDS--------------------
+void obs_module_unload()
+{
+	obs_frontend_remove_event_callback(FrontEndEventHandler, nullptr);
 
-		LoadChapterMarkerDock();
+	obs_frontend_remove_save_callback(SaveLoadHotkeys, nullptr);
+	obs_hotkey_unregister(addDefaultChapterMarkerHotkey);
+}
 
-		obs_data_t *settings = SaveLoadSettingsCallback(nullptr, false);
+MODULE_EXPORT const char *obs_module_description(void)
+{
+	return obs_module_text("Description");
+}
 
-		if (settings) {
-			chapterMarkerDock->applySettings(settings);
-			obs_data_release(settings);
-		}
-
-		return true;
-	}
-
-	void obs_module_post_load(void)
-	{
-		chapterMarkerDock->onAnnotationClicked(true);
-	}
-
-	//--------------------EXIT COMMANDS--------------------
-	void obs_module_unload()
-	{
-		obs_frontend_remove_event_callback(FrontEndEventHandler,
-						   nullptr);
-
-		obs_frontend_remove_save_callback(SaveLoadHotkeys, nullptr);
-		obs_hotkey_unregister(addDefaultChapterMarkerHotkey);
-	}
-
-	MODULE_EXPORT const char *obs_module_description(void)
-	{
-		return obs_module_text("Description");
-	}
-
-	MODULE_EXPORT const char *obs_module_name(void)
-	{
-		return obs_module_text("StreamUPRecordChapterManager");
-	}
+MODULE_EXPORT const char *obs_module_name(void)
+{
+	return obs_module_text("StreamUPRecordChapterManager");
+}

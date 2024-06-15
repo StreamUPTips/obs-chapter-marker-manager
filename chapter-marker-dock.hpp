@@ -48,6 +48,7 @@ public:
 	bool exportChaptersToTextEnabled;
 	bool exportChaptersToXMLEnabled;
 	bool exportChaptersToFileEnabled;
+	bool insertChapterMarkersInVideoEnabled;
 	QString exportTextFilePath;
 	QString exportXMLFilePath;
 	QString defaultChapterName;
@@ -56,7 +57,6 @@ public:
 	bool showPreviousChaptersEnabled;
 	bool addChapterSourceEnabled;
 	int chapterCount;
-	void applySettings(obs_data_t *settings);
 
 	void setAnnotationDock(AnnotationDock *dock);
 	void writeAnnotationToFiles(const QString &chapterName,
@@ -64,6 +64,8 @@ public:
 				    const QString &chapterSource);
 	void applyThemeIDToButton(QPushButton *button, const QString &themeID);
 	QDialog *settingsDialog;
+	void LoadSettings(obs_data_t *settings);
+	void SaveSettings();
 
 public slots:
 	void onAddChapterMarkerButton();
@@ -76,6 +78,7 @@ public slots:
 	void onPreviousChapterDoubleClicked(QListWidgetItem *item);
 	void saveSettingsAndCloseDialog();
 	void onSetIgnoredScenesClicked();
+	void refreshMainDockUI();
 
 private:
 	void setupMainDockUI();
@@ -86,7 +89,6 @@ private:
 	void setupMainDockPreviousChaptersGroup(QVBoxLayout *mainLayout);
 	void setupConnections();
 	void setupOBSCallbacks();
-	void initialiseMainDockUI();
 	QDialog *createSettingsUI();
 	void setupSettingsGeneralGroup(QVBoxLayout *mainLayout);
 	void setupSettingsAutoChapterGroup(QVBoxLayout *mainLayout);

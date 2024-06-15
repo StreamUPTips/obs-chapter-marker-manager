@@ -53,7 +53,7 @@ ChapterMarkerDock::ChapterMarkerDock(QWidget *parent)
 	// OBS Event Callback
 	setupOBSCallbacks();
 	// initialise UI States
-	initialiseMainDockUI();
+	refreshMainDockUI();
 }
 
 ChapterMarkerDock::~ChapterMarkerDock()
@@ -209,9 +209,10 @@ void ChapterMarkerDock::setupMainDockPreviousChaptersGroup(
 	mainLayout->addWidget(previousChaptersGroup);
 }
 
-void ChapterMarkerDock::initialiseMainDockUI()
+void ChapterMarkerDock::refreshMainDockUI()
 {
 	previousChaptersGroup->setVisible(showPreviousChaptersEnabled);
+	onAnnotationClicked(true);
 }
 
 //--------------------MAIN DOCK UI EVENT HANDLERS--------------------
@@ -246,7 +247,6 @@ void ChapterMarkerDock::onSettingsClicked()
 	if (!settingsDialog) {
 		settingsDialog = createSettingsUI();
 	}
-	initialiseSettingsDialog();
 	settingsDialog->exec();
 }
 
@@ -287,9 +287,19 @@ void ChapterMarkerDock::clearPreviousChaptersGroup()
 	timestamps.clear();
 }
 
-void ChapterMarkerDock::onAnnotationClicked(bool startup)
+void ChapterMarkerDock::onAnnotationClicked(bool refresh)
 {
-	if (!exportChaptersToFileEnabled && !startup) {
+	if (refresh) {
+		if (!exportChaptersToFileEnabled)
+		{
+			const char *dock_id = "AnnotationDock";
+			obs_frontend_remove_dock(dock_id);
+			annotationDock = nullptr;
+			return;
+		}
+	}
+
+	if (!exportChaptersToFileEnabled && !refresh) {
 		showFeedbackMessage(
 			"Please turn on 'Export chapters to .txt file' in settings to use Annotations.",
 			true);
@@ -329,7 +339,7 @@ void ChapterMarkerDock::onAnnotationClicked(bool startup)
 	}
 
 	// Show and raise the dock whether it was just created or already existed
-	if (!startup) {
+	if (!refresh) {
 		annotationDock->parentWidget()->show();
 		annotationDock->parentWidget()->raise();
 	}
@@ -366,7 +376,7 @@ QDialog *ChapterMarkerDock::createSettingsUI()
 
 	setupSettingsGeneralGroup(mainLayout);
 	setupSettingsExportGroup(mainLayout);
-	//setupSettingsAutoChapterGroup(mainLayout);
+	setupSettingsAutoChapterGroup(mainLayout);
 
 	QDialogButtonBox *buttonBox = new QDialogButtonBox(
 		QDialogButtonBox::Ok | QDialogButtonBox::Cancel,
@@ -410,10 +420,12 @@ void ChapterMarkerDock::setupSettingsGeneralGroup(QVBoxLayout *mainLayout)
 	showPreviousChaptersCheckbox =
 		new QCheckBox("Show chapter history", generalSettingsGroup);
 	generalSettingsLayout->addWidget(showPreviousChaptersCheckbox);
+	showPreviousChaptersCheckbox->setChecked(showPreviousChaptersEnabled);
 
 	addChapterSourceCheckbox = new QCheckBox("Add chapter trigger source",
 						 generalSettingsGroup);
 	generalSettingsLayout->addWidget(addChapterSourceCheckbox);
+	addChapterSourceCheckbox->setChecked(addChapterSourceEnabled);
 
 	generalSettingsGroup->setLayout(generalSettingsLayout);
 	generalSettingsGroup->adjustSize();
@@ -434,8 +446,10 @@ void ChapterMarkerDock::setupSettingsExportGroup(QVBoxLayout *mainLayout)
 	insertChapterMarkersCheckbox = new QCheckBox(
 		"Insert Chapter Markers into Video File", exportSettingsGroup);
 	exportSettingsLayout->addWidget(insertChapterMarkersCheckbox);
+	insertChapterMarkersCheckbox->setChecked(
+		insertChapterMarkersInVideoEnabled);
 
-	// Export chapter markers to files
+	// Create check boxes
 	exportChaptersToFileCheckbox = new QCheckBox(
 		"Export Chapter Markers to File", exportSettingsGroup);
 	exportChaptersToTextCheckbox =
@@ -443,6 +457,10 @@ void ChapterMarkerDock::setupSettingsExportGroup(QVBoxLayout *mainLayout)
 	exportChaptersToXMLCheckbox =
 		new QCheckBox("Export to .xml", exportSettingsGroup);
 
+	// Set check boxes visually
+	exportChaptersToFileCheckbox->setChecked(exportChaptersToFileEnabled);
+	exportChaptersToTextCheckbox->setChecked(exportChaptersToTextEnabled);
+	exportChaptersToXMLCheckbox->setChecked(exportChaptersToXMLEnabled);
 	exportChaptersToTextCheckbox->setVisible(exportChaptersToFileEnabled);
 	exportChaptersToXMLCheckbox->setVisible(exportChaptersToFileEnabled);
 
@@ -485,21 +503,20 @@ void ChapterMarkerDock::setupSettingsAutoChapterGroup(QVBoxLayout *mainLayout)
 	QVBoxLayout *sceneChangeSettingsLayout =
 		new QVBoxLayout(sceneChangeSettingsGroup);
 
+	// Add chapter on scene change checkbox
 	chapterOnSceneChangeCheckbox = new QCheckBox(
 		"Set Chapter on Scene Change", sceneChangeSettingsGroup);
 	sceneChangeSettingsLayout->addWidget(chapterOnSceneChangeCheckbox);
-
+	chapterOnSceneChangeCheckbox->setChecked(chapterOnSceneChangeEnabled);
 	connect(chapterOnSceneChangeCheckbox, &QCheckBox::toggled, this,
 		&ChapterMarkerDock::onChapterOnSceneChangeToggled);
 
 	// Set ignore scene button
 	setIgnoredScenesButton =
 		new QPushButton("Set Ignored Scenes", sceneChangeSettingsGroup);
-	setIgnoredScenesButton->setVisible(false);
-
-	//connect(setIgnoredScenesButton, &QPushButton::clicked, this,
-	//	&ChapterMarkerDock::onSetIgnoredScenesClicked);
-
+	setIgnoredScenesButton->setVisible(chapterOnSceneChangeEnabled);
+	connect(setIgnoredScenesButton, &QPushButton::clicked, this,
+		&ChapterMarkerDock::onSetIgnoredScenesClicked);
 	sceneChangeSettingsLayout->addWidget(setIgnoredScenesButton);
 
 	sceneChangeSettingsGroup->setLayout(sceneChangeSettingsLayout);
@@ -509,92 +526,12 @@ void ChapterMarkerDock::setupSettingsAutoChapterGroup(QVBoxLayout *mainLayout)
 	mainLayout->addWidget(sceneChangeSettingsGroup);
 }
 
-void ChapterMarkerDock::initialiseSettingsDialog()
-{
-	if (chapterOnSceneChangeCheckbox && showPreviousChaptersCheckbox &&
-	    exportChaptersToFileCheckbox && exportChaptersToTextCheckbox &&
-	    exportChaptersToXMLCheckbox && addChapterSourceCheckbox) {
-
-		chapterOnSceneChangeCheckbox->setChecked(
-			chapterOnSceneChangeEnabled);
-		showPreviousChaptersCheckbox->setChecked(
-			showPreviousChaptersEnabled);
-		exportChaptersToFileCheckbox->setChecked(
-			exportChaptersToFileEnabled);
-		exportChaptersToTextCheckbox->setChecked(
-			exportChaptersToTextEnabled);
-		exportChaptersToXMLCheckbox->setChecked(
-			exportChaptersToXMLEnabled);
-		addChapterSourceCheckbox->setChecked(addChapterSourceEnabled);
-		defaultChapterNameEdit->setText(defaultChapterName);
-
-		// Ensure visibility matches the settings
-		exportChaptersToTextCheckbox->setVisible(
-			exportChaptersToTextEnabled);
-		exportChaptersToXMLCheckbox->setVisible(
-			exportChaptersToXMLEnabled);
-		setIgnoredScenesButton->setVisible(chapterOnSceneChangeEnabled);
-	}
-}
-
 void ChapterMarkerDock::saveSettingsAndCloseDialog()
 {
-	obs_data_t *saveData = obs_data_create();
-
-	//obs_data_set_bool(saveData, "chapter_on_scene_change_enabled",
-	//		  chapterOnSceneChangeCheckbox->isChecked());
-	obs_data_set_bool(saveData, "show_previous_chapters_enabled",
-			  showPreviousChaptersCheckbox->isChecked());
-	obs_data_set_bool(saveData, "export_chapters_to_file_enabled",
-			  exportChaptersToFileCheckbox->isChecked());
-	obs_data_set_bool(saveData, "export_chapters_to_text_enabled",
-			  exportChaptersToTextCheckbox->isChecked());
-	obs_data_set_bool(saveData, "export_chapters_to_xml_enabled",
-			  exportChaptersToXMLCheckbox->isChecked());
-	obs_data_set_bool(saveData, "add_chapter_source_enabled",
-			  addChapterSourceCheckbox->isChecked());
-	obs_data_set_string(
-		saveData, "default_chapter_name",
-		defaultChapterNameEdit->text().isEmpty()
-			? "Chapter"
-			: defaultChapterNameEdit->text().toStdString().c_str());
-
-	exportChaptersToFileEnabled = exportChaptersToFileCheckbox->isChecked();
-	exportChaptersToTextEnabled = exportChaptersToTextCheckbox->isChecked();
-	exportChaptersToXMLEnabled = exportChaptersToXMLCheckbox->isChecked();
-
-	SaveLoadSettingsCallback(saveData, true);
-
-	obs_data_release(saveData);
-
-	if (!exportChaptersToTextCheckbox->isChecked() &&
-	    !exportChaptersToXMLCheckbox->isChecked() && annotationDock) {
-		const char *dock_id = "AnnotationDock";
-		obs_frontend_remove_dock(dock_id);
-		annotationDock = nullptr;
-	}
-
+	exportChaptersToFileEnabled = exportChaptersToFileCheckbox->isChecked(); 
+	SaveSettings();
+	refreshMainDockUI();
 	settingsDialog->accept();
-}
-
-void ChapterMarkerDock::applySettings(obs_data_t *settings)
-{
-	chapterOnSceneChangeEnabled =
-		obs_data_get_bool(settings, "chapter_on_scene_change_enabled");
-	showPreviousChaptersEnabled =
-		obs_data_get_bool(settings, "show_previous_chapters_enabled");
-	exportChaptersToFileEnabled =
-		obs_data_get_bool(settings, "export_chapters_to_file_enabled");
-	exportChaptersToTextEnabled =
-		obs_data_get_bool(settings, "export_chapters_to_text_enabled");
-	exportChaptersToXMLEnabled =
-		obs_data_get_bool(settings, "export_chapters_to_xml_enabled");
-	addChapterSourceEnabled =
-		obs_data_get_bool(settings, "add_chapter_source_enabled");
-	defaultChapterName = QString::fromUtf8(
-		obs_data_get_string(settings, "default_chapter_name"));
-
-	initialiseMainDockUI();
 }
 
 //--------------------SETTINGS UI EVENT HANDLERS--------------------
@@ -1043,4 +980,95 @@ QString ChapterMarkerDock::getCurrentRecordingTime() const
 		output); // Ensure this is always called before returning
 
 	return recordingTimeString;
+}
+
+//--------------------CONFIGS--------------------
+void ChapterMarkerDock::LoadSettings(obs_data_t *settings)
+{
+	// Default chapter name
+	defaultChapterName = QString::fromUtf8(
+		obs_data_get_string(settings, "default_chapter_name"));
+
+	// Set chapter on scene change
+	chapterOnSceneChangeEnabled =
+		obs_data_get_bool(settings, "chapter_on_scene_change_enabled");
+
+	// Previous chapters
+	showPreviousChaptersEnabled =
+		obs_data_get_bool(settings, "show_previous_chapters_enabled");
+
+	// Write to files
+	exportChaptersToFileEnabled =
+		obs_data_get_bool(settings, "export_chapters_to_file_enabled");
+	exportChaptersToTextEnabled =
+		obs_data_get_bool(settings, "export_chapters_to_text_enabled");
+	exportChaptersToXMLEnabled =
+		obs_data_get_bool(settings, "export_chapters_to_xml_enabled");
+
+	// Write chapters to video
+	insertChapterMarkersInVideoEnabled = obs_data_get_bool(
+		settings, "insert_chapter_markers_in_video_enabled");
+
+	// Add chapter source
+	addChapterSourceEnabled =
+		obs_data_get_bool(settings, "add_chapter_source_enabled");
+
+	// Load ignored scenes
+	ignoredScenes.clear();
+	obs_data_array_t *ignoredScenesArray =
+		obs_data_get_array(settings, "ignored_scenes");
+	if (ignoredScenesArray) {
+		size_t count = obs_data_array_count(ignoredScenesArray);
+		for (size_t i = 0; i < count; ++i) {
+			obs_data_t *sceneData =
+				obs_data_array_item(ignoredScenesArray, i);
+			const char *sceneName =
+				obs_data_get_string(sceneData, "scene_name");
+			if (sceneName) {
+				ignoredScenes << QString::fromUtf8(sceneName);
+			}
+			obs_data_release(sceneData);
+		}
+		obs_data_array_release(ignoredScenesArray);
+	}
+}
+
+void ChapterMarkerDock::SaveSettings()
+{
+	obs_data_t *settings = obs_data_create();
+
+	//Default chapter name
+	obs_data_set_string(
+		settings, "default_chapter_name",
+		defaultChapterNameEdit->text().isEmpty()
+			? "Chapter"
+			: defaultChapterNameEdit->text().toStdString().c_str());
+
+	// Set chapter on scene change
+	obs_data_set_bool(settings, "chapter_on_scene_change_enabled",
+			  chapterOnSceneChangeCheckbox->isChecked());
+
+	// Previous chapters
+	obs_data_set_bool(settings, "show_previous_chapters_enabled",
+			  showPreviousChaptersCheckbox->isChecked());
+
+	// Write to files
+	obs_data_set_bool(settings, "export_chapters_to_file_enabled",
+			  exportChaptersToFileCheckbox->isChecked());
+	obs_data_set_bool(settings, "export_chapters_to_text_enabled",
+			  exportChaptersToTextCheckbox->isChecked());
+	obs_data_set_bool(settings, "export_chapters_to_xml_enabled",
+			  exportChaptersToXMLCheckbox->isChecked());
+
+	// Write chapters to video
+	obs_data_set_bool(settings, "insert_chapter_markers_in_video_enabled",
+			  insertChapterMarkersCheckbox->isChecked());
+
+	// Add chapter source
+	obs_data_set_bool(settings, "add_chapter_source_enabled",
+			  addChapterSourceCheckbox->isChecked());
+
+	SaveLoadSettingsCallback(settings, true);
+
+	obs_data_release(settings);
 }
