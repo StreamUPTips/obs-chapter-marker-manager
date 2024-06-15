@@ -609,8 +609,8 @@ QDialog *ChapterMarkerDock::createIgnoredScenesUI()
 	// Create OK and Cancel buttons
 	QDialogButtonBox *buttonBox = new QDialogButtonBox(
 		QDialogButtonBox::Ok | QDialogButtonBox::Cancel, dialog);
-	connect(buttonBox, &QDialogButtonBox::accepted, dialog,
-		&QDialog::accept);
+	connect(buttonBox, &QDialogButtonBox::accepted, this,
+		&ChapterMarkerDock::saveIgnoredScenes);
 	connect(buttonBox, &QDialogButtonBox::rejected, dialog,
 		&QDialog::reject);
 
@@ -634,10 +634,32 @@ void ChapterMarkerDock::populateIgnoredScenesListWidget()
 	char **scene_names = obs_frontend_get_scene_names();
 	if (scene_names) {
 		for (char **name = scene_names; *name; name++) {
-			ignoredScenesListWidget->addItem(
-				QString::fromUtf8(*name));
+			QListWidgetItem *item =
+				new QListWidgetItem(QString::fromUtf8(*name),
+						    ignoredScenesListWidget);
+			// Check if this scene is in the ignoredScenes list and select it if it is
+			if (ignoredScenes.contains(QString::fromUtf8(*name))) {
+				item->setSelected(true);
+			}
 		}
 		bfree(scene_names);
+	}
+}
+
+void ChapterMarkerDock::saveIgnoredScenes()
+{
+	ignoredScenes.clear();
+	QList<QListWidgetItem *> selectedItems =
+		ignoredScenesListWidget->selectedItems();
+	for (QListWidgetItem *item : selectedItems) {
+		ignoredScenes << item->text();
+	}
+
+	// Save the settings
+	SaveSettings();
+
+	if (ignoredScenesDialog) {
+		ignoredScenesDialog->accept();
 	}
 }
 
@@ -1037,7 +1059,7 @@ void ChapterMarkerDock::SaveSettings()
 {
 	obs_data_t *settings = obs_data_create();
 
-	//Default chapter name
+	// Default chapter name
 	obs_data_set_string(
 		settings, "default_chapter_name",
 		defaultChapterNameEdit->text().isEmpty()
@@ -1067,6 +1089,18 @@ void ChapterMarkerDock::SaveSettings()
 	// Add chapter source
 	obs_data_set_bool(settings, "add_chapter_source_enabled",
 			  addChapterSourceCheckbox->isChecked());
+
+	// Save ignored scenes
+	obs_data_array_t *ignoredScenesArray = obs_data_array_create();
+	for (const QString &sceneName : ignoredScenes) {
+		obs_data_t *sceneData = obs_data_create();
+		obs_data_set_string(sceneData, "scene_name",
+				    sceneName.toStdString().c_str());
+		obs_data_array_push_back(ignoredScenesArray, sceneData);
+		obs_data_release(sceneData);
+	}
+	obs_data_set_array(settings, "ignored_scenes", ignoredScenesArray);
+	obs_data_array_release(ignoredScenesArray);
 
 	SaveLoadSettingsCallback(settings, true);
 

@@ -92,7 +92,7 @@ private:
 	QDialog *createSettingsUI();
 	void setupSettingsGeneralGroup(QVBoxLayout *mainLayout);
 	void setupSettingsAutoChapterGroup(QVBoxLayout *mainLayout);
-	void initialiseSettingsDialog();
+	void saveIgnoredScenes();
 	void populateIgnoredScenesListWidget();
 	QCheckBox *exportChaptersToFileCheckbox;
 	QCheckBox *exportChaptersToTextCheckbox;
