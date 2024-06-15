@@ -113,12 +113,28 @@ static void SaveLoadHotkeys(obs_data_t *save_data, bool saving, void *)
 		obs_data_set_array(save_data, "addDefaultChapterMarkerHotkey",
 				   hotkey_save_array);
 		obs_data_array_release(hotkey_save_array);
+		chapterMarkerDock->SaveHotkeys(save_data);
+
+		obs_data_array_t *chaptersArray = obs_data_array_create();
+		for (const auto &chapter : chapterMarkerDock->presetChapters) {
+			obs_data_t *chapterData = obs_data_create();
+			obs_data_set_string(chapterData, "chapter_name",
+					    QT_TO_UTF8(chapter));
+			obs_data_array_push_back(chaptersArray, chapterData);
+			obs_data_release(chapterData);
+		}
+		obs_data_set_array(save_data, "preset_chapters", chaptersArray);
+		obs_data_array_release(chaptersArray);
+
 	} else {
 		obs_data_array_t *hotkey_save_array = obs_data_get_array(
 			save_data, "addDefaultChapterMarkerHotkey");
 		obs_hotkey_load(addDefaultChapterMarkerHotkey,
 				hotkey_save_array);
 		obs_data_array_release(hotkey_save_array);
+		chapterMarkerDock->LoadHotkeys(save_data);
+		chapterMarkerDock->LoadPresetChapters(save_data);
+
 	}
 }
 

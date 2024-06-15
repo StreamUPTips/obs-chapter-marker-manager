@@ -68,6 +68,10 @@ ChapterMarkerDock::ChapterMarkerDock(QWidget *parent)
 
 ChapterMarkerDock::~ChapterMarkerDock()
 {
+	for (const auto &chapterName : chapterHotkeys.keys()) {
+		unregisterChapterHotkey(chapterName);
+	}
+
 	if (settingsDialog) {
 		delete settingsDialog;
 	}
@@ -619,11 +623,19 @@ void ChapterMarkerDock::onSetIgnoredScenesClicked()
 	ignoredScenesDialog->exec();
 }
 
+// Slot for preset chapters button click
 void ChapterMarkerDock::onSetPresetChaptersButtonClicked()
 {
 	if (!presetChaptersDialog) {
 		setupPresetChaptersDialog();
 	}
+
+	// Populate the chaptersListWidget with presetChapters
+	chaptersListWidget->clear();
+	for (const auto &chapter : presetChapters) {
+		chaptersListWidget->addItem(chapter);
+	}
+
 	presetChaptersDialog->exec();
 }
 
@@ -692,12 +704,14 @@ void ChapterMarkerDock::setupPresetChaptersDialog()
 // Register hotkey for a chapter
 void ChapterMarkerDock::registerChapterHotkey(const QString &chapterName)
 {
-	obs_hotkey_id hotkeyId = obs_hotkey_register_frontend(
-		QT_TO_UTF8(chapterName), QT_TO_UTF8(chapterName),
-		AddDefaultChapterMarkerHotkey, this);
+	if (!chapterHotkeys.contains(chapterName)) {
+		obs_hotkey_id hotkeyId = obs_hotkey_register_frontend(
+			QT_TO_UTF8(chapterName), QT_TO_UTF8(chapterName),
+			AddDefaultChapterMarkerHotkey, this);
 
-	if (hotkeyId != OBS_INVALID_HOTKEY_ID) {
-		chapterHotkeys.insert(chapterName, hotkeyId);
+		if (hotkeyId != OBS_INVALID_HOTKEY_ID) {
+			chapterHotkeys.insert(chapterName, hotkeyId);
+		}
 	}
 }
 
@@ -710,6 +724,88 @@ void ChapterMarkerDock::unregisterChapterHotkey(const QString &chapterName)
 		chapterHotkeys.remove(chapterName);
 	}
 }
+
+// Save hotkeys
+void ChapterMarkerDock::SaveHotkeys(obs_data_t *settings)
+{
+	obs_data_array_t *hotkeysArray = obs_data_array_create();
+	for (const auto &chapterName : chapterHotkeys.keys()) {
+		obs_data_t *hotkeyData = obs_data_create();
+		obs_data_set_string(hotkeyData, "chapter_name",
+				    QT_TO_UTF8(chapterName));
+
+		obs_data_array_t *hotkeySaveArray =
+			obs_hotkey_save(chapterHotkeys[chapterName]);
+		obs_data_set_array(hotkeyData, "hotkey_data", hotkeySaveArray);
+		obs_data_array_release(hotkeySaveArray);
+
+		obs_data_array_push_back(hotkeysArray, hotkeyData);
+		obs_data_release(hotkeyData);
+	}
+	obs_data_set_array(settings, "chapter_hotkeys", hotkeysArray);
+	obs_data_array_release(hotkeysArray);
+}
+
+// Load hotkeys
+void ChapterMarkerDock::LoadHotkeys(obs_data_t *settings)
+{
+	obs_data_array_t *hotkeysArray =
+		obs_data_get_array(settings, "chapter_hotkeys");
+	if (hotkeysArray) {
+		for (size_t i = 0; i < obs_data_array_count(hotkeysArray);
+		     ++i) {
+			obs_data_t *hotkeyData =
+				obs_data_array_item(hotkeysArray, i);
+			const char *chapterName =
+				obs_data_get_string(hotkeyData, "chapter_name");
+			obs_data_array_t *hotkeyLoadArray =
+				obs_data_get_array(hotkeyData, "hotkey_data");
+
+			if (chapterName && hotkeyLoadArray) {
+				obs_hotkey_id hotkeyId =
+					obs_hotkey_register_frontend(
+						chapterName, chapterName,
+						AddDefaultChapterMarkerHotkey,
+						this);
+
+				if (hotkeyId != OBS_INVALID_HOTKEY_ID) {
+					obs_hotkey_load(hotkeyId,
+							hotkeyLoadArray);
+					chapterHotkeys.insert(
+						QString::fromUtf8(chapterName),
+						hotkeyId);
+				}
+				obs_data_array_release(hotkeyLoadArray);
+			}
+			obs_data_release(hotkeyData);
+		}
+		obs_data_array_release(hotkeysArray);
+	}
+}
+
+// Load preset chapters
+void ChapterMarkerDock::LoadPresetChapters(obs_data_t *settings)
+{
+	obs_data_array_t *chaptersArray =
+		obs_data_get_array(settings, "preset_chapters");
+	if (chaptersArray) {
+		for (size_t i = 0; i < obs_data_array_count(chaptersArray);
+		     ++i) {
+			obs_data_t *chapterData =
+				obs_data_array_item(chaptersArray, i);
+			const char *chapterName = obs_data_get_string(
+				chapterData, "chapter_name");
+
+			if (chapterName) {
+				presetChapters.append(
+					QString::fromUtf8(chapterName));
+			}
+			obs_data_release(chapterData);
+		}
+		obs_data_array_release(chaptersArray);
+	}
+}
+
 //--------------------IGNORED SCENES UI--------------------
 QDialog *ChapterMarkerDock::createIgnoredScenesUI()
 {
