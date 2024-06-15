@@ -227,6 +227,14 @@ void ChapterMarkerDock::onAddChapterMarkerButton()
 		return;
 	}
 
+	if (!exportChaptersToFileEnabled &&
+	    !insertChapterMarkersInVideoEnabled) {
+		showFeedbackMessage(
+			"No chapter export method is selected in the settings.",
+			true);
+		return;
+	}
+
 	QString chapterName = getChapterName();
 	if (chapterName.isEmpty()) {
 		// Use the default chapter name if the user did not provide one
@@ -236,9 +244,6 @@ void ChapterMarkerDock::onAddChapterMarkerButton()
 	}
 
 	addChapterMarker(chapterName, "Manual");
-	blog(LOG_INFO,
-	     "[StreamUP Record Chapter Manager] Chapter marker added with name: %s",
-	     chapterName.toStdString().c_str());
 	chapterNameInput->clear();
 }
 
@@ -252,6 +257,14 @@ void ChapterMarkerDock::onSettingsClicked()
 
 void ChapterMarkerDock::onRecordingStopped()
 {
+	if (!exportChaptersToFileEnabled &&
+	    !insertChapterMarkersInVideoEnabled) {
+		showFeedbackMessage(
+			"No chapter export method is selected in the settings.",
+			true);
+		return;
+	}
+
 	showFeedbackMessage("Recording finished", false);
 
 	QString timestamp = getCurrentRecordingTime();
@@ -290,8 +303,7 @@ void ChapterMarkerDock::clearPreviousChaptersGroup()
 void ChapterMarkerDock::onAnnotationClicked(bool refresh)
 {
 	if (refresh) {
-		if (!exportChaptersToFileEnabled)
-		{
+		if (!exportChaptersToFileEnabled) {
 			const char *dock_id = "AnnotationDock";
 			obs_frontend_remove_dock(dock_id);
 			annotationDock = nullptr;
@@ -353,6 +365,14 @@ void ChapterMarkerDock::setAnnotationDock(AnnotationDock *dock)
 //--------------------MAIN DOCK LABELS--------------------
 void ChapterMarkerDock::updateCurrentChapterLabel(const QString &chapterName)
 {
+	if (!exportChaptersToFileEnabled &&
+	    !insertChapterMarkersInVideoEnabled) {
+		showFeedbackMessage(
+			"No chapter export method is selected in the settings.",
+			true);
+		return;
+	}
+
 	currentChapterNameLabel->setText(chapterName);
 	currentChapterNameLabel->setStyleSheet("color: white;");
 }
@@ -528,8 +548,16 @@ void ChapterMarkerDock::setupSettingsAutoChapterGroup(QVBoxLayout *mainLayout)
 
 void ChapterMarkerDock::saveSettingsAndCloseDialog()
 {
-	exportChaptersToFileEnabled = exportChaptersToFileCheckbox->isChecked(); 
+	exportChaptersToFileEnabled = exportChaptersToFileCheckbox->isChecked();
 	SaveSettings();
+
+	obs_data_t *settings = SaveLoadSettingsCallback(nullptr, false);
+
+	if (settings) {
+		LoadSettings(settings);
+		obs_data_release(settings);
+	}
+
 	refreshMainDockUI();
 	settingsDialog->accept();
 }
@@ -912,52 +940,53 @@ void ChapterMarkerDock::addChapterMarker(const QString &chapterName,
 		}
 	}
 
-	// Add chapter marker to the recording
-	bool success =
-		obs_frontend_recording_add_chapter(QT_TO_UTF8(fullChapterName));
+	// Only add the chapter marker to the recording if it's not the first run
+	if (!isFirstRunInRecording && insertChapterMarkersInVideoEnabled) {
+		bool success = obs_frontend_recording_add_chapter(
+			QT_TO_UTF8(fullChapterName));
+		if (!success) {
+			blog(LOG_INFO,
+			     "[StreamUP Record Chapter Manager] You have selected to insert chapters into video file. You are not using a compatible file type.");
+			showFeedbackMessage(
+				"You have selected to insert chapters into video file. You are not using a compatible file type.",
+				true);
+		}
+	}
 
 	// Log and handle the result of adding the chapter marker
-	if (success) {
-		QString timestamp = getCurrentRecordingTime();
+	QString timestamp = getCurrentRecordingTime();
 
-		// Always write to the chapter file if enabled
-		if (exportChaptersToTextEnabled) {
-			writeChapterToTextFile(chapterName, timestamp,
-					       chapterSource);
-		}
-
-		if (exportChaptersToXMLEnabled) {
-			writeChapterToXMLFile(chapterName, timestamp,
-					      chapterSource);
-		}
-
-		blog(LOG_INFO,
-		     "[StreamUP Record Chapter Manager] Added chapter marker: %s",
-		     QT_TO_UTF8(fullChapterName));
-		updateCurrentChapterLabel(fullChapterName);
-		showFeedbackMessage(
-			QString("Chapter marker added: %1").arg(fullChapterName),
-			false);
-
-		// Move the chapter to the top of the previous chapters list
-		QList<QListWidgetItem *> items =
-			previousChaptersList->findItems(fullChapterName,
-							Qt::MatchExactly);
-		if (!items.isEmpty()) {
-			delete previousChaptersList->takeItem(
-				previousChaptersList->row(items.first()));
-		}
-		previousChaptersList->insertItem(0, fullChapterName);
-
-		chapters.insert(0, chapterName);
-		timestamps.insert(0, timestamp);
-	} else {
-		blog(LOG_ERROR,
-		     "[StreamUP Record Chapter Manager] Failed to add chapter marker. Ensure the output supports chapter markers.");
-		showFeedbackMessage(
-			"Failed to add chapter marker. Ensure the output supports chapter markers.",
-			true);
+	// Always write to the chapter file if enabled
+	if (exportChaptersToTextEnabled) {
+		writeChapterToTextFile(chapterName, timestamp, chapterSource);
 	}
+
+	if (exportChaptersToXMLEnabled) {
+		writeChapterToXMLFile(chapterName, timestamp, chapterSource);
+	}
+
+	blog(LOG_INFO,
+	     "[StreamUP Record Chapter Manager] Added chapter marker: %s",
+	     QT_TO_UTF8(fullChapterName));
+	updateCurrentChapterLabel(fullChapterName);
+	showFeedbackMessage(
+		QString("Chapter marker added: %1").arg(fullChapterName),
+		false);
+
+	// Move the chapter to the top of the previous chapters list
+	QList<QListWidgetItem *> items = previousChaptersList->findItems(
+		fullChapterName, Qt::MatchExactly);
+	if (!items.isEmpty()) {
+		delete previousChaptersList->takeItem(
+			previousChaptersList->row(items.first()));
+	}
+	previousChaptersList->insertItem(0, fullChapterName);
+
+	chapters.insert(0, chapterName);
+	timestamps.insert(0, timestamp);
+
+	// After the first run, set the flag to false
+	isFirstRunInRecording = false;
 }
 
 //--------------------UTILITY FUNCTIONS--------------------

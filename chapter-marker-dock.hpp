@@ -66,6 +66,7 @@ public:
 	QDialog *settingsDialog;
 	void LoadSettings(obs_data_t *settings);
 	void SaveSettings();
+	bool isFirstRunInRecording;
 
 public slots:
 	void onAddChapterMarkerButton();

@@ -58,8 +58,16 @@ static void LoadChapterMarkerDock()
 
 static void OnStartRecording()
 {
-	if (!chapterMarkerDock ||
-	    !chapterMarkerDock->exportChaptersToFileEnabled) {
+	if (!chapterMarkerDock)
+	{
+		return;
+	}
+
+	if (!chapterMarkerDock->exportChaptersToFileEnabled && !chapterMarkerDock->insertChapterMarkersInVideoEnabled)
+	{
+		chapterMarkerDock->showFeedbackMessage(
+			"No chapter export method is selected in the settings.",
+			true);
 		return;
 	}
 
@@ -74,6 +82,7 @@ static void FrontEndEventHandler(enum obs_frontend_event event, void *)
 	switch (event) {
 	case OBS_FRONTEND_EVENT_RECORDING_STARTED:
 		if (chapterMarkerDock) {
+			chapterMarkerDock->isFirstRunInRecording = true;
 			chapterMarkerDock->updateCurrentChapterLabel("Start");
 			OnStartRecording();
 		}
