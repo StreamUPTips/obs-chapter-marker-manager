@@ -80,8 +80,18 @@ public slots:
 	void saveSettingsAndCloseDialog();
 	void onSetIgnoredScenesClicked();
 	void refreshMainDockUI();
+	void onSetPresetChaptersButtonClicked();
 
 private:
+	void setupPresetChaptersDialog();
+
+	QDialog *presetChaptersDialog;
+	QLineEdit *presetChapterNameInput;
+	QPushButton *addChapterButton;
+	QPushButton *removeChapterButton;
+	QListWidget *chaptersListWidget;
+	QStringList presetChapters;
+
 	void setupMainDockUI();
 	void setupMainDockCurrentChapterLayout(QVBoxLayout *mainLayout);
 	void setupMainDockChapterInput(QVBoxLayout *mainLayout);
@@ -104,7 +114,6 @@ private:
 	void onExportChaptersToFileToggled(bool checked);
 	void onChapterOnSceneChangeToggled(bool checked);
 	QDialog *createIgnoredScenesUI();
-
 	QDialog *ignoredScenesDialog;
 	QGroupBox *sceneChangeSettingsGroup;
 	QLineEdit *chapterNameInput;
@@ -113,6 +122,8 @@ private:
 	QPushButton *settingsButton;
 	QPushButton *setIgnoredScenesButton;
 	QPushButton *annotationButton; // New button for annotation dock
+	QPushButton *setPresetChaptersButton;
+
 	QLabel *currentChapterTextLabel;
 	QLabel *currentChapterNameLabel;
 	QLabel *feedbackLabel;

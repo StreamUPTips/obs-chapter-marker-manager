@@ -17,6 +17,8 @@
 #include <QFrame>
 #include <QGroupBox>
 #include <QMainWindow>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
 
 #define QT_TO_UTF8(str) str.toUtf8().constData()
 
@@ -44,7 +46,12 @@ ChapterMarkerDock::ChapterMarkerDock(QWidget *parent)
 	  chapterCount(1),
 	  annotationButton(new QPushButton(this)),
 	  annotationDock(nullptr),
-	  ignoredScenesDialog(nullptr)
+	  ignoredScenesDialog(nullptr),
+	  presetChaptersDialog(nullptr),
+	  presetChapterNameInput(nullptr),
+	  addChapterButton(nullptr),
+	  removeChapterButton(nullptr),
+	  chaptersListWidget(nullptr)
 {
 	// UI Setup
 	setupMainDockUI();
@@ -447,6 +454,12 @@ void ChapterMarkerDock::setupSettingsGeneralGroup(QVBoxLayout *mainLayout)
 	generalSettingsLayout->addWidget(addChapterSourceCheckbox);
 	addChapterSourceCheckbox->setChecked(addChapterSourceEnabled);
 
+	setPresetChaptersButton =
+		new QPushButton("Set Chapter Presets", generalSettingsGroup);
+	connect(setPresetChaptersButton, &QPushButton::clicked, this,
+		&ChapterMarkerDock::onSetPresetChaptersButtonClicked);
+	generalSettingsLayout->addWidget(setPresetChaptersButton);
+
 	generalSettingsGroup->setLayout(generalSettingsLayout);
 	generalSettingsGroup->adjustSize();
 
@@ -601,6 +614,72 @@ void ChapterMarkerDock::onSetIgnoredScenesClicked()
 		ignoredScenesDialog = createIgnoredScenesUI();
 	}
 	ignoredScenesDialog->exec();
+}
+
+void ChapterMarkerDock::onSetPresetChaptersButtonClicked()
+{
+	if (!presetChaptersDialog) {
+		setupPresetChaptersDialog();
+	}
+	presetChaptersDialog->exec();
+}
+
+void ChapterMarkerDock::setupPresetChaptersDialog()
+{
+	presetChaptersDialog = new QDialog(this);
+	presetChaptersDialog->setWindowTitle("Set Preset Chapters");
+
+	QVBoxLayout *dialogLayout = new QVBoxLayout(presetChaptersDialog);
+
+	// Input field for new chapter names
+	presetChapterNameInput = new QLineEdit(presetChaptersDialog);
+	presetChapterNameInput->setPlaceholderText("Enter chapter name");
+	dialogLayout->addWidget(presetChapterNameInput);
+
+	// Add and Remove buttons
+	QHBoxLayout *buttonsLayout = new QHBoxLayout();
+	addChapterButton = new QPushButton("Add Chapter", presetChaptersDialog);
+	removeChapterButton =
+		new QPushButton("Remove Chapter", presetChaptersDialog);
+	buttonsLayout->addWidget(addChapterButton);
+	buttonsLayout->addWidget(removeChapterButton);
+	dialogLayout->addLayout(buttonsLayout);
+
+	// List widget to display chapters
+	chaptersListWidget = new QListWidget(presetChaptersDialog);
+	dialogLayout->addWidget(chaptersListWidget);
+
+	// Connections for buttons
+	connect(addChapterButton, &QPushButton::clicked, this, [this]() {
+		QString chapterName = presetChapterNameInput->text().trimmed();
+		if (!chapterName.isEmpty() &&
+		    !presetChapters.contains(chapterName)) {
+			presetChapters.append(chapterName);
+			chaptersListWidget->addItem(chapterName);
+			presetChapterNameInput->clear();
+		}
+	});
+
+	connect(removeChapterButton, &QPushButton::clicked, this, [this]() {
+		QList<QListWidgetItem *> selectedItems =
+			chaptersListWidget->selectedItems();
+		for (QListWidgetItem *item : selectedItems) {
+			presetChapters.removeOne(item->text());
+			delete item;
+		}
+	});
+
+	// OK and Cancel buttons
+	QDialogButtonBox *buttonBox = new QDialogButtonBox(
+		QDialogButtonBox::Ok | QDialogButtonBox::Cancel,
+		presetChaptersDialog);
+	connect(buttonBox, &QDialogButtonBox::accepted, presetChaptersDialog,
+		&QDialog::accept);
+	connect(buttonBox, &QDialogButtonBox::rejected, presetChaptersDialog,
+		&QDialog::reject);
+	dialogLayout->addWidget(buttonBox);
+
+	presetChaptersDialog->setLayout(dialogLayout);
 }
 
 //--------------------IGNORED SCENES UI--------------------
