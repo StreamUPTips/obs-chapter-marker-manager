@@ -108,13 +108,17 @@ obs_hotkey_id addDefaultChapterMarkerHotkey = OBS_INVALID_HOTKEY_ID;
 static void SaveLoadHotkeys(obs_data_t *save_data, bool saving, void *)
 {
 	if (saving) {
+		// save default chapter hotkey
 		obs_data_array_t *hotkey_save_array =
 			obs_hotkey_save(addDefaultChapterMarkerHotkey);
 		obs_data_set_array(save_data, "addDefaultChapterMarkerHotkey",
 				   hotkey_save_array);
 		obs_data_array_release(hotkey_save_array);
-		chapterMarkerDock->SaveHotkeys(save_data);
 
+		// load preset chapter hotkeys
+		chapterMarkerDock->SaveChapterHotkeys(save_data);
+
+		// save preset chapters
 		obs_data_array_t *chaptersArray = obs_data_array_create();
 		for (const auto &chapter : chapterMarkerDock->presetChapters) {
 			obs_data_t *chapterData = obs_data_create();
@@ -127,12 +131,17 @@ static void SaveLoadHotkeys(obs_data_t *save_data, bool saving, void *)
 		obs_data_array_release(chaptersArray);
 
 	} else {
-		obs_data_array_t *hotkey_save_array = obs_data_get_array(
+		// load default chapter hotkey
+		obs_data_array_t *hotkey_load_array = obs_data_get_array(
 			save_data, "addDefaultChapterMarkerHotkey");
 		obs_hotkey_load(addDefaultChapterMarkerHotkey,
-				hotkey_save_array);
-		obs_data_array_release(hotkey_save_array);
-		chapterMarkerDock->LoadHotkeys(save_data);
+				hotkey_load_array);
+		obs_data_array_release(hotkey_load_array);
+
+		// load preset chapter hokeys
+		chapterMarkerDock->LoadChapterHotkeys(save_data);
+
+		// load preset chapters
 		chapterMarkerDock->LoadPresetChapters(save_data);
 
 	}
@@ -160,6 +169,38 @@ void AddDefaultChapterMarkerHotkey(void *data, obs_hotkey_id id,
 	     chapterMarkerDock->chapterCount);
 
 	chapterMarkerDock->chapterCount++; // Increment the chapter count
+}
+
+void AddChapterMarkerHotkey(void *data, obs_hotkey_id id, obs_hotkey_t *hotkey,
+			    bool pressed)
+{
+	if (!pressed)
+		return;
+	if (!obs_frontend_recording_active()) {
+		chapterMarkerDock->showFeedbackMessage(
+			"Recording is not active. Chapter marker not added.",
+			true);
+		chapterMarkerDock->showFeedbackMessage(
+			"Recording is not active. Chapter marker not added.",
+			true);
+		return;
+	}
+
+	QString chapterName;
+	ChapterMarkerDock *dock = reinterpret_cast<ChapterMarkerDock *>(data);
+	for (const auto &entry : dock->chapterHotkeys.toStdMap()) {
+		if (entry.second == id) {
+			chapterName = entry.first;
+			break;
+		}
+	}
+
+	if (!chapterName.isEmpty()) {
+		chapterMarkerDock->addChapterMarker(chapterName, "Hotkey");
+		blog(LOG_INFO,
+		     "[StreamUP Record Chapter Manager] Added chapter marker for: %s",
+		     QT_TO_UTF8(chapterName));
+	}
 }
 
 //--------------------MENU HELPERS--------------------

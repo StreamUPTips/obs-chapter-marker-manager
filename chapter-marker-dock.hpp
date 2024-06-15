@@ -68,10 +68,11 @@ public:
 	void LoadSettings(obs_data_t *settings);
 	void SaveSettings();
 	bool isFirstRunInRecording;
-	void SaveHotkeys(obs_data_t *settings);
-	void LoadHotkeys(obs_data_t *settings);
+	void SaveChapterHotkeys(obs_data_t *settings);
+	void LoadChapterHotkeys(obs_data_t *settings);
 	void LoadPresetChapters(obs_data_t *settings);
 	QStringList presetChapters;
+	QMap<QString, obs_hotkey_id> chapterHotkeys;
 
 public slots:
 	void onAddChapterMarkerButton();
@@ -96,7 +97,6 @@ private:
 	QPushButton *addChapterButton;
 	QPushButton *removeChapterButton;
 	QListWidget *chaptersListWidget;
-	QMap<QString, obs_hotkey_id> chapterHotkeys;
 	void setupMainDockUI();
 	void setupMainDockCurrentChapterLayout(QVBoxLayout *mainLayout);
 	void setupMainDockChapterInput(QVBoxLayout *mainLayout);

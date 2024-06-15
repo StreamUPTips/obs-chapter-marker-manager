@@ -22,7 +22,7 @@
 
 #define QT_TO_UTF8(str) str.toUtf8().constData()
 
-extern void AddDefaultChapterMarkerHotkey(void *data, obs_hotkey_id id,
+extern void AddChapterMarkerHotkey(void *data, obs_hotkey_id id,
 					  obs_hotkey_t *hotkey, bool pressed);
 
 //--------------------CONSTRUCTOR & DESTRUCTOR--------------------
@@ -462,7 +462,7 @@ void ChapterMarkerDock::setupSettingsGeneralGroup(QVBoxLayout *mainLayout)
 	addChapterSourceCheckbox->setChecked(addChapterSourceEnabled);
 
 	setPresetChaptersButton =
-		new QPushButton("Set Chapter Presets", generalSettingsGroup);
+		new QPushButton("Set Preset Chapter Hotkeys", generalSettingsGroup);
 	connect(setPresetChaptersButton, &QPushButton::clicked, this,
 		&ChapterMarkerDock::onSetPresetChaptersButtonClicked);
 	generalSettingsLayout->addWidget(setPresetChaptersButton);
@@ -623,7 +623,6 @@ void ChapterMarkerDock::onSetIgnoredScenesClicked()
 	ignoredScenesDialog->exec();
 }
 
-// Slot for preset chapters button click
 void ChapterMarkerDock::onSetPresetChaptersButtonClicked()
 {
 	if (!presetChaptersDialog) {
@@ -639,7 +638,7 @@ void ChapterMarkerDock::onSetPresetChaptersButtonClicked()
 	presetChaptersDialog->exec();
 }
 
-// Setup the preset chapters dialog
+//--------------------PRESET CHAPTERS--------------------
 void ChapterMarkerDock::setupPresetChaptersDialog()
 {
 	presetChaptersDialog = new QDialog(this);
@@ -701,13 +700,12 @@ void ChapterMarkerDock::setupPresetChaptersDialog()
 	presetChaptersDialog->setLayout(dialogLayout);
 }
 
-// Register hotkey for a chapter
 void ChapterMarkerDock::registerChapterHotkey(const QString &chapterName)
 {
 	if (!chapterHotkeys.contains(chapterName)) {
 		obs_hotkey_id hotkeyId = obs_hotkey_register_frontend(
 			QT_TO_UTF8(chapterName), QT_TO_UTF8(chapterName),
-			AddDefaultChapterMarkerHotkey, this);
+			AddChapterMarkerHotkey, this);
 
 		if (hotkeyId != OBS_INVALID_HOTKEY_ID) {
 			chapterHotkeys.insert(chapterName, hotkeyId);
@@ -715,7 +713,6 @@ void ChapterMarkerDock::registerChapterHotkey(const QString &chapterName)
 	}
 }
 
-// Unregister hotkey for a chapter
 void ChapterMarkerDock::unregisterChapterHotkey(const QString &chapterName)
 {
 	if (chapterHotkeys.contains(chapterName)) {
@@ -725,8 +722,7 @@ void ChapterMarkerDock::unregisterChapterHotkey(const QString &chapterName)
 	}
 }
 
-// Save hotkeys
-void ChapterMarkerDock::SaveHotkeys(obs_data_t *settings)
+void ChapterMarkerDock::SaveChapterHotkeys(obs_data_t *settings)
 {
 	obs_data_array_t *hotkeysArray = obs_data_array_create();
 	for (const auto &chapterName : chapterHotkeys.keys()) {
@@ -746,8 +742,7 @@ void ChapterMarkerDock::SaveHotkeys(obs_data_t *settings)
 	obs_data_array_release(hotkeysArray);
 }
 
-// Load hotkeys
-void ChapterMarkerDock::LoadHotkeys(obs_data_t *settings)
+void ChapterMarkerDock::LoadChapterHotkeys(obs_data_t *settings)
 {
 	obs_data_array_t *hotkeysArray =
 		obs_data_get_array(settings, "chapter_hotkeys");
@@ -765,7 +760,7 @@ void ChapterMarkerDock::LoadHotkeys(obs_data_t *settings)
 				obs_hotkey_id hotkeyId =
 					obs_hotkey_register_frontend(
 						chapterName, chapterName,
-						AddDefaultChapterMarkerHotkey,
+						AddChapterMarkerHotkey,
 						this);
 
 				if (hotkeyId != OBS_INVALID_HOTKEY_ID) {
@@ -783,7 +778,6 @@ void ChapterMarkerDock::LoadHotkeys(obs_data_t *settings)
 	}
 }
 
-// Load preset chapters
 void ChapterMarkerDock::LoadPresetChapters(obs_data_t *settings)
 {
 	obs_data_array_t *chaptersArray =
@@ -805,6 +799,7 @@ void ChapterMarkerDock::LoadPresetChapters(obs_data_t *settings)
 		obs_data_array_release(chaptersArray);
 	}
 }
+
 
 //--------------------IGNORED SCENES UI--------------------
 QDialog *ChapterMarkerDock::createIgnoredScenesUI()
