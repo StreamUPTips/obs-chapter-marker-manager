@@ -3,18 +3,19 @@
 #ifndef CHAPTER_MARKER_DOCK_HPP
 #define CHAPTER_MARKER_DOCK_HPP
 
+#include <obs-frontend-api.h>
+#include <QCheckBox>
+#include <QDialog>
 #include <QFrame>
-#include <QLineEdit>
-#include <QPushButton>
+#include <QGroupBox>
 #include <QLabel>
+#include <QLineEdit>
+#include <QListWidget>
+#include <QMap>
+#include <QPushButton>
+#include <QStringList>
 #include <QTimer>
 #include <QVBoxLayout>
-#include <QListWidget>
-#include <QCheckBox>
-#include <QGroupBox>
-#include <QDialog>
-#include <QStringList>
-#include <obs-frontend-api.h>
 
 // Forward declaration of AnnotationDock
 class AnnotationDock;
@@ -84,13 +85,15 @@ public slots:
 
 private:
 	void setupPresetChaptersDialog();
-
+	void registerChapterHotkey(const QString &chapterName);
+	void unregisterChapterHotkey(const QString &chapterName);
 	QDialog *presetChaptersDialog;
 	QLineEdit *presetChapterNameInput;
 	QPushButton *addChapterButton;
 	QPushButton *removeChapterButton;
 	QListWidget *chaptersListWidget;
 	QStringList presetChapters;
+	QMap<QString, obs_hotkey_id> chapterHotkeys;
 
 	void setupMainDockUI();
 	void setupMainDockCurrentChapterLayout(QVBoxLayout *mainLayout);

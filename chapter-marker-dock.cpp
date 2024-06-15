@@ -22,6 +22,9 @@
 
 #define QT_TO_UTF8(str) str.toUtf8().constData()
 
+extern void AddDefaultChapterMarkerHotkey(void *data, obs_hotkey_id id,
+					  obs_hotkey_t *hotkey, bool pressed);
+
 //--------------------CONSTRUCTOR & DESTRUCTOR--------------------
 ChapterMarkerDock::ChapterMarkerDock(QWidget *parent)
 	: QFrame(parent),
@@ -624,6 +627,7 @@ void ChapterMarkerDock::onSetPresetChaptersButtonClicked()
 	presetChaptersDialog->exec();
 }
 
+// Setup the preset chapters dialog
 void ChapterMarkerDock::setupPresetChaptersDialog()
 {
 	presetChaptersDialog = new QDialog(this);
@@ -657,6 +661,7 @@ void ChapterMarkerDock::setupPresetChaptersDialog()
 			presetChapters.append(chapterName);
 			chaptersListWidget->addItem(chapterName);
 			presetChapterNameInput->clear();
+			registerChapterHotkey(chapterName);
 		}
 	});
 
@@ -664,8 +669,10 @@ void ChapterMarkerDock::setupPresetChaptersDialog()
 		QList<QListWidgetItem *> selectedItems =
 			chaptersListWidget->selectedItems();
 		for (QListWidgetItem *item : selectedItems) {
-			presetChapters.removeOne(item->text());
+			QString chapterName = item->text();
+			presetChapters.removeOne(chapterName);
 			delete item;
+			unregisterChapterHotkey(chapterName);
 		}
 	});
 
@@ -682,6 +689,27 @@ void ChapterMarkerDock::setupPresetChaptersDialog()
 	presetChaptersDialog->setLayout(dialogLayout);
 }
 
+// Register hotkey for a chapter
+void ChapterMarkerDock::registerChapterHotkey(const QString &chapterName)
+{
+	obs_hotkey_id hotkeyId = obs_hotkey_register_frontend(
+		QT_TO_UTF8(chapterName), QT_TO_UTF8(chapterName),
+		AddDefaultChapterMarkerHotkey, this);
+
+	if (hotkeyId != OBS_INVALID_HOTKEY_ID) {
+		chapterHotkeys.insert(chapterName, hotkeyId);
+	}
+}
+
+// Unregister hotkey for a chapter
+void ChapterMarkerDock::unregisterChapterHotkey(const QString &chapterName)
+{
+	if (chapterHotkeys.contains(chapterName)) {
+		obs_hotkey_id hotkeyId = chapterHotkeys.value(chapterName);
+		obs_hotkey_unregister(hotkeyId);
+		chapterHotkeys.remove(chapterName);
+	}
+}
 //--------------------IGNORED SCENES UI--------------------
 QDialog *ChapterMarkerDock::createIgnoredScenesUI()
 {
