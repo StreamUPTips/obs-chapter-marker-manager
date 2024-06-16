@@ -21,6 +21,8 @@ public:
 		       QWidget *parent = nullptr);
 	~AnnotationDock();
 
+	void updateInputState(bool enabled);
+
 public slots:
 	void onSaveAnnotationButton();
 

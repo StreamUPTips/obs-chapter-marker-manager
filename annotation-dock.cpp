@@ -9,12 +9,16 @@
 AnnotationDock::AnnotationDock(ChapterMarkerDock *chapterDock, QWidget *parent)
 	: QFrame(parent),
 	  annotationEdit(new QTextEdit(this)),
-	  saveChapterMarkerButton(new QPushButton(obs_module_text("SaveAnnotationText"), this)),
+	  saveChapterMarkerButton(
+		  new QPushButton(obs_module_text("SaveAnnotationText"), this)),
 	  feedbackLabel(new QLabel("", this)),
 	  chapterDock(chapterDock)
 {
 	setupUI();
 	setupConnections();
+	updateInputState(
+		chapterDock
+			->exportChaptersToFileEnabled); // Initialize the input state
 }
 
 AnnotationDock::~AnnotationDock() {}
@@ -23,7 +27,8 @@ void AnnotationDock::setupUI()
 {
 	QVBoxLayout *mainLayout = new QVBoxLayout(this);
 	mainLayout->addWidget(annotationEdit);
-	saveChapterMarkerButton->setToolTip(obs_module_text("SaveAnnotationButtonToolTip"));
+	saveChapterMarkerButton->setToolTip(
+		obs_module_text("SaveAnnotationButtonToolTip"));
 	mainLayout->addWidget(saveChapterMarkerButton);
 	mainLayout->addWidget(feedbackLabel);
 
@@ -45,7 +50,8 @@ void AnnotationDock::setupConnections()
 void AnnotationDock::onSaveAnnotationButton()
 {
 	if (!obs_frontend_recording_active()) {
-		feedbackLabel->setText(obs_module_text("AnnotationErrorOutputNotActive"));
+		feedbackLabel->setText(
+			obs_module_text("AnnotationErrorOutputNotActive"));
 		feedbackLabel->setStyleSheet("color: red;");
 		feedbackTimer.start();
 		return;
@@ -53,17 +59,32 @@ void AnnotationDock::onSaveAnnotationButton()
 
 	QString annotationText = annotationEdit->toPlainText();
 	if (annotationText.isEmpty()) {
-		feedbackLabel->setText(obs_module_text("AnnotationErrorTextIsEmpty"));
+		feedbackLabel->setText(
+			obs_module_text("AnnotationErrorTextIsEmpty"));
 		feedbackLabel->setStyleSheet("color: red;");
 		feedbackTimer.start();
 		return;
 	}
 
 	QString timestamp = chapterDock->getCurrentRecordingTime();
-	chapterDock->writeAnnotationToFiles(annotationText, timestamp, obs_module_text("SourceManual"));
+	chapterDock->writeAnnotationToFiles(annotationText, timestamp,
+					    obs_module_text("SourceManual"));
 
 	feedbackLabel->setText(obs_module_text("AnnotationSaved"));
 	feedbackLabel->setStyleSheet("color: green;");
 	feedbackTimer.start();
 	annotationEdit->clear();
+}
+
+void AnnotationDock::updateInputState(bool enabled)
+{
+	annotationEdit->setReadOnly(!enabled);
+	saveChapterMarkerButton->setEnabled(enabled);
+
+	if (!enabled) {
+		annotationEdit->setText(
+			"Enable Export to file in settings to use Chapter Marker Annotations");
+	} else {
+		annotationEdit->clear();
+	}
 }

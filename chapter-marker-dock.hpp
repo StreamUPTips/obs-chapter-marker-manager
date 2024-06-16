@@ -78,6 +78,9 @@ public:
 	void onAddAnnotation(const QString &annotationText,
 			     const QString &annotationSource);
 
+	AnnotationDock *annotationDock; // Pointer to the annotation dock
+
+
 signals:
 	void addChapterMarkerSignal(const QString &chapterName,
 				    const QString &chapterSource);
@@ -159,7 +162,6 @@ private:
 	QHBoxLayout *textCheckboxLayout;
 	QHBoxLayout *xmlCheckboxLayout;
 	QVBoxLayout *exportSettingsLayout;
-	AnnotationDock *annotationDock; // Pointer to the annotation dock
 };
 
 #endif // CHAPTER_MARKER_DOCK_HPP

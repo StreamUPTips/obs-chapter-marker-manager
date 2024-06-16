@@ -331,15 +331,6 @@ void ChapterMarkerDock::clearPreviousChaptersGroup()
 
 void ChapterMarkerDock::onAnnotationClicked(bool refresh)
 {
-	if (refresh) {
-		if (!exportChaptersToFileEnabled) {
-			const char *dock_id = "AnnotationDock";
-			obs_frontend_remove_dock(dock_id);
-			annotationDock = nullptr;
-			return;
-		}
-	}
-
 	if (!exportChaptersToFileEnabled && !refresh) {
 		showFeedbackMessage(
 			obs_module_text("AnnotationErrorExportNotActive"),
@@ -593,6 +584,10 @@ void ChapterMarkerDock::setupSettingsAutoChapterGroup(QVBoxLayout *mainLayout)
 void ChapterMarkerDock::saveSettingsAndCloseDialog()
 {
 	exportChaptersToFileEnabled = exportChaptersToFileCheckbox->isChecked();
+	if (annotationDock) {
+		annotationDock->updateInputState(
+			exportChaptersToFileEnabled); // Update input state
+	}
 	SaveSettings();
 
 	obs_data_t *settings = SaveLoadSettingsCallback(nullptr, false);

@@ -283,6 +283,10 @@ static void SaveLoadHotkeys(obs_data_t *save_data, bool saving, void *)
 void AddDefaultChapterMarkerHotkey(void *data, obs_hotkey_id id,
 				   obs_hotkey_t *hotkey, bool pressed)
 {
+	UNUSED_PARAMETER(data);
+	UNUSED_PARAMETER(id);
+	UNUSED_PARAMETER(hotkey);
+
 	if (!pressed)
 		return;
 	if (!obs_frontend_recording_active()) {
@@ -304,6 +308,8 @@ void AddDefaultChapterMarkerHotkey(void *data, obs_hotkey_id id,
 void AddChapterMarkerHotkey(void *data, obs_hotkey_id id, obs_hotkey_t *hotkey,
 			    bool pressed)
 {
+	UNUSED_PARAMETER(hotkey);
+
 	if (!pressed)
 		return;
 	if (!obs_frontend_recording_active()) {
@@ -436,6 +442,12 @@ bool obs_module_load()
 	if (settings) {
 		chapterMarkerDock->LoadSettings(settings);
 		obs_data_release(settings);
+	}
+
+	// Call updateInputState to initialize the state on startup
+	if (chapterMarkerDock && chapterMarkerDock->annotationDock) {
+		chapterMarkerDock->annotationDock->updateInputState(
+			chapterMarkerDock->exportChaptersToFileEnabled);
 	}
 
 	return true;
