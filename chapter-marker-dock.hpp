@@ -133,7 +133,7 @@ private:
 	QGroupBox *sceneChangeSettingsGroup;
 	QLineEdit *chapterNameInput;
 
-	QPushButton *saveButton;
+	QPushButton *saveChapterMarkerButton;
 	QPushButton *settingsButton;
 	QPushButton *setIgnoredScenesButton;
 	QPushButton *annotationButton; // New button for annotation dock

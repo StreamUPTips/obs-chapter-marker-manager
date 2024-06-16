@@ -29,7 +29,7 @@ private:
 	void setupConnections();
 
 	QTextEdit *annotationEdit;
-	QPushButton *saveButton;
+	QPushButton *saveChapterMarkerButton;
 	QLabel *feedbackLabel;
 	QTimer feedbackTimer;
 
