@@ -14,6 +14,7 @@
 #include <QTextStream>
 #include <QFileInfo>
 #include <util/platform.h>
+#include "obs-websocket-api.h"
 
 #define QT_UTF8(str) QString::fromUtf8(str)
 #define QT_TO_UTF8(str) str.toUtf8().constData()
@@ -58,13 +59,12 @@ static void LoadChapterMarkerDock()
 
 static void OnStartRecording()
 {
-	if (!chapterMarkerDock)
-	{
+	if (!chapterMarkerDock) {
 		return;
 	}
 
-	if (!chapterMarkerDock->exportChaptersToFileEnabled && !chapterMarkerDock->insertChapterMarkersInVideoEnabled)
-	{
+	if (!chapterMarkerDock->exportChaptersToFileEnabled &&
+	    !chapterMarkerDock->insertChapterMarkersInVideoEnabled) {
 		chapterMarkerDock->showFeedbackMessage(
 			"No chapter export method is selected in the settings.",
 			true);
@@ -99,6 +99,152 @@ static void FrontEndEventHandler(enum obs_frontend_event event, void *)
 		break;
 	default:
 		break;
+	}
+}
+
+//--------------------WEBSOCKET HANDLERS--------------------
+obs_websocket_vendor vendor = nullptr;
+
+void WebsocketRequestSetChapterMarker(obs_data_t *request_data,
+				      obs_data_t *response_data, void *)
+{
+	// Check if the recording is active
+	if (!obs_frontend_recording_active()) {
+		// Update the response to indicate failure because recording is not active
+		obs_data_set_bool(response_data, "success", false);
+		obs_data_set_string(
+			response_data, "message",
+			"Recording is not active. Chapter marker cannot be added.");
+		return;
+	}
+
+	// Retrieve chapter name and source from the request data
+	const char *chapterName =
+		obs_data_get_string(request_data, "chapter_name");
+	const char *chapterSource =
+		obs_data_get_string(request_data, "chapter_source");
+
+	// Convert to QString for easier handling
+	QString qChapterName =
+		QString::fromUtf8(chapterName ? chapterName : "");
+	QString qChapterSource =
+		QString::fromUtf8(chapterSource ? chapterSource : "");
+
+	// If chapterName is empty, use the default chapter name logic
+	if (qChapterName.isEmpty()) {
+		qChapterName = chapterMarkerDock->defaultChapterName + " " +
+			       QString::number(chapterMarkerDock->chapterCount);
+		chapterMarkerDock->chapterCount++;
+	}
+
+	// If chapterSource is empty, default to "WebSocket"
+	if (qChapterSource.isEmpty()) {
+		qChapterSource = "WebSocket";
+	}
+
+	// Emit the signal to add the chapter marker
+	if (chapterMarkerDock) {
+		emit chapterMarkerDock->addChapterMarkerSignal(qChapterName,
+							       qChapterSource);
+
+		// Update the response to indicate success
+		obs_data_set_bool(response_data, "success", true);
+		obs_data_set_string(response_data, "message",
+				    "Chapter marker added successfully.");
+	} else {
+		// Update the response to indicate failure
+		obs_data_set_bool(response_data, "success", false);
+		obs_data_set_string(response_data, "message",
+				    "ChapterMarkerDock is not initialized.");
+	}
+}
+
+QString GetCurrentChapterName()
+{
+	return currentChapterName;
+}
+
+void WebsocketRequestGetCurrentChapterMarker(obs_data_t *request_data,
+					     obs_data_t *response_data, void *)
+{
+	UNUSED_PARAMETER(request_data);
+
+	QString currentChapterName = GetCurrentChapterName();
+
+	if (!currentChapterName.isEmpty()) {
+		obs_data_set_string(response_data, "chapter_name",
+				    QT_TO_UTF8(currentChapterName));
+		obs_data_set_bool(response_data, "success", true);
+	} else {
+		obs_output_t *output = obs_frontend_get_recording_output();
+
+		if (output) {
+			obs_data_set_string(response_data, "chapter_name",
+					    "Recording is not active");
+			obs_data_set_bool(response_data, "success", false);
+		} else {
+			obs_data_set_string(response_data, "chapter_name",
+					    "Unable to get Chapter name.");
+			obs_data_set_bool(response_data, "success", false);
+		}
+		obs_output_release(output);
+	}
+}
+
+void WebsocketRequestSetAnnotation(obs_data_t *request_data,
+				   obs_data_t *response_data, void *)
+{
+	// Check if the recording is active
+	if (!obs_frontend_recording_active()) {
+		// Update the response to indicate failure because recording is not active
+		obs_data_set_bool(response_data, "success", false);
+		obs_data_set_string(
+			response_data, "message",
+			"Recording is not active. Annotation cannot be added.");
+		return;
+	}
+
+	// Retrieve annotation text and source from the request data
+	const char *annotationText =
+		obs_data_get_string(request_data, "annotation_text");
+	const char *annotationSource =
+		obs_data_get_string(request_data, "annotation_source");
+
+	// Convert to QString for easier handling
+	QString qAnnotationText =
+		QString::fromUtf8(annotationText ? annotationText : "");
+	QString qAnnotationSource =
+		QString::fromUtf8(annotationSource ? annotationSource : "");
+
+	// If annotationText is empty, return an error
+	if (qAnnotationText.isEmpty()) {
+		// Update the response to indicate failure because annotation text is empty
+		obs_data_set_bool(response_data, "success", false);
+		obs_data_set_string(
+			response_data, "message",
+			"Annotation text is empty. Cannot add annotation.");
+		return;
+	}
+
+	// If annotationSource is empty, default to "WebSocket"
+	if (qAnnotationSource.isEmpty()) {
+		qAnnotationSource = "WebSocket";
+	}
+
+	// Emit the signal to add the annotation
+	if (chapterMarkerDock) {
+		emit chapterMarkerDock->addAnnotationSignal(qAnnotationText,
+							    qAnnotationSource);
+
+		// Update the response to indicate success
+		obs_data_set_bool(response_data, "success", true);
+		obs_data_set_string(response_data, "message",
+				    "Annotation added successfully.");
+	} else {
+		// Update the response to indicate failure
+		obs_data_set_bool(response_data, "success", false);
+		obs_data_set_string(response_data, "message",
+				    "ChapterMarkerDock is not initialized.");
 	}
 }
 
@@ -143,7 +289,6 @@ static void SaveLoadHotkeys(obs_data_t *save_data, bool saving, void *)
 
 		// load preset chapters
 		chapterMarkerDock->LoadPresetChapters(save_data);
-
 	}
 }
 
@@ -264,12 +409,33 @@ static void RegisterHotkeys()
 		AddDefaultChapterMarkerHotkey, chapterMarkerDock);
 }
 
+static void RegisterWebsocketRequests()
+{
+	vendor = obs_websocket_register_vendor("streamup-chapter-markers");
+	if (!vendor)
+		return;
+
+	obs_websocket_vendor_register_request(vendor, "setChapterMarker",
+					      WebsocketRequestSetChapterMarker,
+					      nullptr);
+
+	obs_websocket_vendor_register_request(
+		vendor, "getCurrentChapterMarker",
+		WebsocketRequestGetCurrentChapterMarker, nullptr);
+
+	obs_websocket_vendor_register_request(vendor, "setAnnotation",
+					      WebsocketRequestSetAnnotation,
+					      nullptr);
+}
+
 bool obs_module_load()
 {
 	blog(LOG_INFO, "[StreamUP Record Chapter Manager] loaded version %s",
 	     PROJECT_VERSION);
 
 	RegisterHotkeys();
+	RegisterWebsocketRequests();
+
 	obs_frontend_add_save_callback(SaveLoadHotkeys, nullptr);
 	obs_frontend_add_event_callback(FrontEndEventHandler, nullptr);
 

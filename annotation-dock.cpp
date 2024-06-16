@@ -60,7 +60,7 @@ void AnnotationDock::onSaveAnnotationButton()
 	}
 
 	QString timestamp = chapterDock->getCurrentRecordingTime();
-	chapterDock->writeAnnotationToFiles(annotationText, timestamp, "Annotation");
+	chapterDock->writeAnnotationToFiles(annotationText, timestamp, "Manual");
 
 	feedbackLabel->setText("Annotation saved.");
 	feedbackLabel->setStyleSheet("color: green;");

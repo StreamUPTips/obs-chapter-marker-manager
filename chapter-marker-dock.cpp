@@ -23,7 +23,8 @@
 #define QT_TO_UTF8(str) str.toUtf8().constData()
 
 extern void AddChapterMarkerHotkey(void *data, obs_hotkey_id id,
-					  obs_hotkey_t *hotkey, bool pressed);
+				   obs_hotkey_t *hotkey, bool pressed);
+QString currentChapterName;
 
 //--------------------CONSTRUCTOR & DESTRUCTOR--------------------
 ChapterMarkerDock::ChapterMarkerDock(QWidget *parent)
@@ -83,6 +84,14 @@ ChapterMarkerDock::~ChapterMarkerDock()
 //--------------------SIGNAL CONNECTIONS--------------------
 void ChapterMarkerDock::setupConnections()
 {
+	// Websocket add annotation
+	connect(this, &ChapterMarkerDock::addAnnotationSignal, this,
+		&ChapterMarkerDock::onAddAnnotation);
+
+	// Websocket add chapter
+	connect(this, &ChapterMarkerDock::addChapterMarkerSignal, this,
+		&ChapterMarkerDock::onAddChapterMarker);
+
 	// Enter Chapter Name text field and button
 	connect(chapterNameInput, &QLineEdit::returnPressed, saveButton,
 		&QPushButton::click);
@@ -461,8 +470,8 @@ void ChapterMarkerDock::setupSettingsGeneralGroup(QVBoxLayout *mainLayout)
 	generalSettingsLayout->addWidget(addChapterSourceCheckbox);
 	addChapterSourceCheckbox->setChecked(addChapterSourceEnabled);
 
-	setPresetChaptersButton =
-		new QPushButton("Set Preset Chapter Hotkeys", generalSettingsGroup);
+	setPresetChaptersButton = new QPushButton("Set Preset Chapter Hotkeys",
+						  generalSettingsGroup);
 	connect(setPresetChaptersButton, &QPushButton::clicked, this,
 		&ChapterMarkerDock::onSetPresetChaptersButtonClicked);
 	generalSettingsLayout->addWidget(setPresetChaptersButton);
@@ -760,8 +769,7 @@ void ChapterMarkerDock::LoadChapterHotkeys(obs_data_t *settings)
 				obs_hotkey_id hotkeyId =
 					obs_hotkey_register_frontend(
 						chapterName, chapterName,
-						AddChapterMarkerHotkey,
-						this);
+						AddChapterMarkerHotkey, this);
 
 				if (hotkeyId != OBS_INVALID_HOTKEY_ID) {
 					obs_hotkey_load(hotkeyId,
@@ -800,7 +808,6 @@ void ChapterMarkerDock::LoadPresetChapters(obs_data_t *settings)
 	}
 }
 
-//test
 //--------------------IGNORED SCENES UI--------------------
 QDialog *ChapterMarkerDock::createIgnoredScenesUI()
 {
@@ -1053,11 +1060,15 @@ void ChapterMarkerDock::writeChapterToXMLFile(const QString &chapterName,
 
 void ChapterMarkerDock::writeAnnotationToFiles(const QString &annotationText,
 					       const QString &timestamp,
-					       const QString &chapterSource)
+					       const QString &annotationSource)
 {
 	if (!exportChaptersToFileEnabled) {
 		return;
 	}
+
+	// Prepare the full annotation text including the source
+	QString fullAnnotationText = "(Annotation) " + annotationText + " (" +
+				     annotationSource + ")";
 
 	// Writing to text file if enabled
 	if (exportChaptersToTextEnabled) {
@@ -1070,8 +1081,6 @@ void ChapterMarkerDock::writeAnnotationToFiles(const QString &annotationText,
 		QFile textFile(exportTextFilePath);
 		if (textFile.open(QIODevice::Append | QIODevice::Text)) {
 			QTextStream out(&textFile);
-			QString fullAnnotationText =
-				"(Annotation) " + annotationText;
 			out << timestamp << " - " << fullAnnotationText << "\n";
 			textFile.close();
 		} else {
@@ -1095,6 +1104,8 @@ void ChapterMarkerDock::writeAnnotationToFiles(const QString &annotationText,
 			out << "<Annotation>\n";
 			out << "  <Timestamp>" << timestamp << "</Timestamp>\n";
 			out << "  <Text>" << annotationText << "</Text>\n";
+			out << "  <Source>" << annotationSource
+			    << "</Source>\n";
 			out << "</Annotation>\n";
 			xmlFile.close();
 		} else {
@@ -1171,6 +1182,9 @@ void ChapterMarkerDock::addChapterMarker(const QString &chapterName,
 		QString("Chapter marker added: %1").arg(fullChapterName),
 		false);
 
+	// Update the global current chapter name
+	currentChapterName = fullChapterName;
+
 	// Move the chapter to the top of the previous chapters list
 	QList<QListWidgetItem *> items = previousChaptersList->findItems(
 		fullChapterName, Qt::MatchExactly);
@@ -1185,6 +1199,19 @@ void ChapterMarkerDock::addChapterMarker(const QString &chapterName,
 
 	// After the first run, set the flag to false
 	isFirstRunInRecording = false;
+}
+
+void ChapterMarkerDock::onAddChapterMarker(const QString &chapterName,
+					   const QString &chapterSource)
+{
+	addChapterMarker(chapterName, chapterSource);
+}
+
+void ChapterMarkerDock::onAddAnnotation(const QString &annotationText,
+					const QString &annotationSource)
+{
+	writeAnnotationToFiles(annotationText, getCurrentRecordingTime(),
+			       annotationSource);
 }
 
 //--------------------UTILITY FUNCTIONS--------------------

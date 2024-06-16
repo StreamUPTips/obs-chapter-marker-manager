@@ -6,7 +6,11 @@
 #include <obs.h>
 #include <obs-frontend-api.h>
 #include <obs-source.h>
+#include <QString>
 
 obs_data_t *SaveLoadSettingsCallback(obs_data_t *save_data, bool saving);
 
-#endif
+QString GetCurrentChapterName();
+extern QString currentChapterName;
+
+#endif // STREAMUP_RECORD_CHAPTER_MANAGER_HPP

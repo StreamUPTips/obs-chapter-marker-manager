@@ -73,6 +73,16 @@ public:
 	void LoadPresetChapters(obs_data_t *settings);
 	QStringList presetChapters;
 	QMap<QString, obs_hotkey_id> chapterHotkeys;
+	void onAddChapterMarker(const QString &chapterName,
+				const QString &chapterSource);
+	void onAddAnnotation(const QString &annotationText,
+			     const QString &annotationSource);
+
+signals:
+	void addChapterMarkerSignal(const QString &chapterName,
+				    const QString &chapterSource);
+	void addAnnotationSignal(const QString &annotationText,
+				 const QString &annotationSource);
 
 public slots:
 	void onAddChapterMarkerButton();
