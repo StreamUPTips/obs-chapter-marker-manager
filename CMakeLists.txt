@@ -27,6 +27,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   chapter-marker-dock.hpp
   annotation-dock.cpp
   annotation-dock.hpp
+  obs-websocket-api.h
   resources.qrc
   version.h)
 
