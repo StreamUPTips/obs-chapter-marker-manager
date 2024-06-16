@@ -45,7 +45,7 @@ static void LoadChapterMarkerDock()
 		auto dock = new QDockWidget(main_window);
 		dock->setObjectName(name);
 		dock->setWindowTitle(title);
-		dock->setWidget(dock_widget);
+		dock->setWidget(chapterMarkerDock);
 		dock->setFeatures(QDockWidget::DockWidgetMovable |
 				  QDockWidget::DockWidgetFloatable);
 		dock->setFloating(true);
@@ -428,10 +428,19 @@ static void RegisterWebsocketRequests()
 					      nullptr);
 }
 
+bool (*obs_frontend_recording_add_chapter_wrapper)(const char *name) = nullptr;
+
 bool obs_module_load()
 {
 	blog(LOG_INFO, "[StreamUP Record Chapter Manager] loaded version %s",
 	     PROJECT_VERSION);
+
+	if (obs_get_version() >= MAKE_SEMANTIC_VERSION(30, 2, 0)) {
+		void *handle = os_dlopen("obs-frontend-api");
+		obs_frontend_recording_add_chapter_wrapper =
+			(bool (*)(const char *name))os_dlsym(
+				handle, "obs_frontend_recording_add_chapter");
+	}
 
 	RegisterHotkeys();
 	RegisterWebsocketRequests();

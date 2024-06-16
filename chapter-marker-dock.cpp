@@ -19,6 +19,7 @@
 #include <QMainWindow>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
+#include <QDockWidget>
 
 #define QT_TO_UTF8(str) str.toUtf8().constData()
 
@@ -1137,6 +1138,8 @@ void ChapterMarkerDock::onSceneChanged()
 	}
 }
 
+extern bool (*obs_frontend_recording_add_chapter_wrapper)(const char *name);
+
 void ChapterMarkerDock::addChapterMarker(const QString &chapterName,
 					 const QString &chapterSource)
 {
@@ -1150,8 +1153,9 @@ void ChapterMarkerDock::addChapterMarker(const QString &chapterName,
 	}
 
 	// Only add the chapter marker to the recording if it's not the first run
-	if (!isFirstRunInRecording && insertChapterMarkersInVideoEnabled) {
-		bool success = obs_frontend_recording_add_chapter(
+	if (!isFirstRunInRecording && insertChapterMarkersInVideoEnabled &&
+	    obs_frontend_recording_add_chapter_wrapper) {
+		bool success = obs_frontend_recording_add_chapter_wrapper(
 			QT_TO_UTF8(fullChapterName));
 		if (!success) {
 			blog(LOG_INFO,
