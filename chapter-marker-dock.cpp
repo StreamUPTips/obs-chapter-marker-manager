@@ -38,7 +38,6 @@ ChapterMarkerDock::ChapterMarkerDock(QWidget *parent)
 		  new QLabel(obs_module_text("CurrentChapterLabel"), this)),
 	  currentChapterNameLabel(
 		  new QLabel(obs_module_text("RecordingNotActive"), this)),
-	  feedbackLabel(new QLabel("", this)),
 	  settingsDialog(nullptr),
 	  chapterOnSceneChangeCheckbox(nullptr),
 	  showPreviousChaptersCheckbox(nullptr),
@@ -48,6 +47,7 @@ ChapterMarkerDock::ChapterMarkerDock(QWidget *parent)
 	  showPreviousChaptersEnabled(false),
 	  chapterOnSceneChangeEnabled(false),
 	  addChapterSourceEnabled(false),
+	  feedbackLabel(new QLabel("", this)),
 	  ignoredScenesListWidget(nullptr),
 	  defaultChapterName(obs_module_text("DefaultChapterName")),
 	  previousChaptersList(new QListWidget(this)),
