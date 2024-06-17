@@ -82,8 +82,7 @@ void AnnotationDock::updateInputState(bool enabled)
 	saveChapterMarkerButton->setEnabled(enabled);
 
 	if (!enabled) {
-		annotationEdit->setText(
-			"Enable Export to file in settings to use Chapter Marker Annotations");
+		annotationEdit->setText(obs_module_text("AnnotationMainError"));
 	} else {
 		annotationEdit->clear();
 	}

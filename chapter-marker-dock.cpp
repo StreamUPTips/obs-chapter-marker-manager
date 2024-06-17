@@ -203,7 +203,9 @@ void ChapterMarkerDock::setupMainDockCurrentChapterLayout(
 
 void ChapterMarkerDock::setupMainDockChapterInput(QVBoxLayout *mainLayout)
 {
-	chapterNameInput->setPlaceholderText("Enter chapter name");
+	chapterNameInput->setPlaceholderText(obs_module_text("EnterChapterName"));
+	chapterNameInput->setToolTip(
+		obs_module_text("EnterChapterNameTooltip"));
 	mainLayout->addWidget(chapterNameInput);
 }
 
@@ -214,8 +216,10 @@ void ChapterMarkerDock::setupMainDockSaveButtonLayout(QVBoxLayout *mainLayout)
 	// Make Save Chapter Marker button fill the horizontal space
 	saveChapterMarkerButton->setSizePolicy(QSizePolicy::Expanding,
 					       QSizePolicy::Fixed);
+	saveChapterMarkerButton->setToolTip(obs_module_text("SaveChapterMarkerButtonTooltip"));
 
 	// Configure the settings button
+	settingsButton->setToolTip(obs_module_text("SettingsTooltip"));
 	applyThemeIDToButton(settingsButton, "configIconSmall");
 
 	// Configure the annotation button using the applyThemeIDToButton function
@@ -223,6 +227,7 @@ void ChapterMarkerDock::setupMainDockSaveButtonLayout(QVBoxLayout *mainLayout)
 	annotationButton->setMinimumSize(32, 24);
 	annotationButton->setMaximumSize(32, 24);
 	annotationButton->setIconSize(QSize(20, 20));
+	annotationButton->setToolTip(obs_module_text("AnnotationButtonTooltip"));
 
 	// Add the Save Chapter Marker button and a stretch to push the settings button to the right
 	saveButtonLayout->addWidget(saveChapterMarkerButton);
@@ -247,9 +252,10 @@ void ChapterMarkerDock::setupMainDockFeedbackLabel(QVBoxLayout *mainLayout)
 void ChapterMarkerDock::setupMainDockPreviousChaptersGroup(
 	QVBoxLayout *mainLayout)
 {
-	previousChaptersGroup = new QGroupBox("Previous Chapters", this);
+	previousChaptersGroup = new QGroupBox(obs_module_text("PreviousChapters"), this);
 	previousChaptersGroup->setStyleSheet(
 		"QGroupBox { font-weight: bold; border: 1px solid gray; padding: 10px; margin-top: 10px; } QGroupBox::title { subcontrol-origin: margin; subcontrol-position: top center; padding: 0 3px; }");
+	previousChaptersGroup->setToolTip(obs_module_text("PreviousChaptersTooltip"));
 	QVBoxLayout *previousChaptersLayout =
 		new QVBoxLayout(previousChaptersGroup);
 	previousChaptersLayout->setAlignment(
@@ -273,16 +279,14 @@ void ChapterMarkerDock::onAddChapterMarkerButton()
 	if (!obs_frontend_recording_active()) {
 		blog(LOG_WARNING,
 		     "[StreamUP Record Chapter Manager] Recording is not active. Chapter marker not added.");
-		showFeedbackMessage(
-			"Recording is not active. Chapter marker not added.",
+		showFeedbackMessage(obs_module_text("ChapterMarkerNotActive"),
 			true);
 		return;
 	}
 
 	if (!exportChaptersToFileEnabled &&
 	    !insertChapterMarkersInVideoEnabled) {
-		showFeedbackMessage(
-			"No chapter export method is selected in the settings.",
+		showFeedbackMessage(obs_module_text("NoExportMethod"),
 			true);
 		return;
 	}
@@ -295,7 +299,7 @@ void ChapterMarkerDock::onAddChapterMarkerButton()
 		chapterCount++;
 	}
 
-	addChapterMarker(chapterName, "Manual");
+	addChapterMarker(chapterName, obs_module_text("SourceManual"));
 	chapterNameInput->clear();
 }
 
@@ -467,9 +471,13 @@ void ChapterMarkerDock::setupSettingsGeneralGroup(QVBoxLayout *mainLayout)
 	QLabel *defaultChapterNameLabel =
 		new QLabel(obs_module_text("GeneralSettingsDefaultChapterName"),
 			   generalSettingsGroup);
+	defaultChapterNameLabel->setToolTip(
+		obs_module_text("DefaultChapterNameTooltip"));
+
 	defaultChapterNameEdit = new QLineEdit(generalSettingsGroup);
 	defaultChapterNameEdit->setPlaceholderText(
 		obs_module_text("GeneralSettingsDefaultChapterPlaceholder"));
+	defaultChapterNameEdit->setToolTip(obs_module_text("DefaultChapterNameTooltip"));
 	defaultChapterNameEdit->setText(defaultChapterName);
 	defaultChapterNameEdit->setMinimumWidth(200);
 
@@ -484,18 +492,21 @@ void ChapterMarkerDock::setupSettingsGeneralGroup(QVBoxLayout *mainLayout)
 	showPreviousChaptersCheckbox = new QCheckBox(
 		obs_module_text("GeneralSettingsShowChapterHistory"),
 		generalSettingsGroup);
+	showPreviousChaptersCheckbox->setToolTip(obs_module_text("PreviousChaptersTooltip"));
 	generalSettingsLayout->addWidget(showPreviousChaptersCheckbox);
 	showPreviousChaptersCheckbox->setChecked(showPreviousChaptersEnabled);
 
 	addChapterSourceCheckbox = new QCheckBox(
 		obs_module_text("GeneralSettingsAddChapterSource"),
 		generalSettingsGroup);
+	addChapterSourceCheckbox->setToolTip(obs_module_text("GeneralSettingsAddChapterSourceTooltip"));
 	generalSettingsLayout->addWidget(addChapterSourceCheckbox);
 	addChapterSourceCheckbox->setChecked(addChapterSourceEnabled);
 
 	setPresetChaptersButton = new QPushButton(
 		obs_module_text("GeneralSettingsSetPresetHotkeys"),
 		generalSettingsGroup);
+	setPresetChaptersButton->setToolTip(obs_module_text("GeneralSettingsSetPresetHotkeysTooltip"));
 	connect(setPresetChaptersButton, &QPushButton::clicked, this,
 		&ChapterMarkerDock::onSetPresetChaptersButtonClicked);
 	generalSettingsLayout->addWidget(setPresetChaptersButton);
@@ -519,20 +530,30 @@ void ChapterMarkerDock::setupSettingsExportGroup(QVBoxLayout *mainLayout)
 	insertChapterMarkersCheckbox =
 		new QCheckBox(obs_module_text("ExportSettingsInsertIntoFile"),
 			      exportSettingsGroup);
+	insertChapterMarkersCheckbox->setToolTip(
+		obs_module_text("ExportSettingsInsertIntoFileTooltip"));
 	exportSettingsLayout->addWidget(insertChapterMarkersCheckbox);
 	insertChapterMarkersCheckbox->setChecked(
 		insertChapterMarkersInVideoEnabled);
+
+#if LIBOBS_API_VER < MAKE_SEMANTIC_VERSION(30, 2, 0)
+	insertChapterMarkersCheckbox->setEnabled(false);
+	insertChapterMarkersCheckbox->setChecked(false);
+#endif
 
 	// Create check boxes
 	exportChaptersToFileCheckbox =
 		new QCheckBox(obs_module_text("ExportSettingsExportToFile"),
 			      exportSettingsGroup);
+	exportChaptersToFileCheckbox->setToolTip(obs_module_text("ExportSettingsExportToFileTooltip"));
 	exportChaptersToTextCheckbox =
 		new QCheckBox(obs_module_text("ExportSettingsExportToText"),
 			      exportSettingsGroup);
+	exportChaptersToTextCheckbox->setToolTip(obs_module_text("ExportSettingsExportToTextTooltip"));
 	exportChaptersToXMLCheckbox =
 		new QCheckBox(obs_module_text("ExportSettingsExportToXml"),
 			      exportSettingsGroup);
+	exportChaptersToXMLCheckbox->setToolTip(obs_module_text("ExportSettingsExportToXmlTooltip"));
 
 	// Set check boxes visually
 	exportChaptersToFileCheckbox->setChecked(exportChaptersToFileEnabled);
@@ -584,6 +605,7 @@ void ChapterMarkerDock::setupSettingsAutoChapterGroup(QVBoxLayout *mainLayout)
 	chapterOnSceneChangeCheckbox =
 		new QCheckBox(obs_module_text("AutoChapterOnSceneChange"),
 			      sceneChangeSettingsGroup);
+	chapterOnSceneChangeCheckbox->setToolTip(obs_module_text("AutoChapterOnSceneChangeTooltip"));
 	sceneChangeSettingsLayout->addWidget(chapterOnSceneChangeCheckbox);
 	chapterOnSceneChangeCheckbox->setChecked(chapterOnSceneChangeEnabled);
 	connect(chapterOnSceneChangeCheckbox, &QCheckBox::toggled, this,
@@ -593,6 +615,7 @@ void ChapterMarkerDock::setupSettingsAutoChapterGroup(QVBoxLayout *mainLayout)
 	setIgnoredScenesButton =
 		new QPushButton(obs_module_text("AutoChapterSetIgnoredScenes"),
 				sceneChangeSettingsGroup);
+	setIgnoredScenesButton->setToolTip(obs_module_text("AutoChapterSetIgnoredScenesTooltip"));
 	setIgnoredScenesButton->setVisible(chapterOnSceneChangeEnabled);
 	connect(setIgnoredScenesButton, &QPushButton::clicked, this,
 		&ChapterMarkerDock::onSetIgnoredScenesClicked);
@@ -690,10 +713,18 @@ void ChapterMarkerDock::setupPresetChaptersDialog()
 
 	QVBoxLayout *dialogLayout = new QVBoxLayout(presetChaptersDialog);
 
+	// Explanation label
+	QLabel *explanationLabel =
+		new QLabel(obs_module_text("GeneralSettingsSetPresetChaptersExplanation"),
+			   presetChaptersDialog);
+	explanationLabel->setWordWrap(true);
+	dialogLayout->addWidget(explanationLabel);
+
 	// Input field for new chapter names
 	presetChapterNameInput = new QLineEdit(presetChaptersDialog);
 	presetChapterNameInput->setPlaceholderText(
 		obs_module_text("SetPresetHotkeysChapterNameInput"));
+	presetChapterNameInput->setToolTip(obs_module_text("SetPresetHotkeysChapterNameInputTooltip"));
 	dialogLayout->addWidget(presetChapterNameInput);
 
 	// Add and Remove buttons
@@ -701,9 +732,11 @@ void ChapterMarkerDock::setupPresetChaptersDialog()
 	addChapterButton =
 		new QPushButton(obs_module_text("SetPresetHotkeysAddChapter"),
 				presetChaptersDialog);
+	addChapterButton->setToolTip(obs_module_text("SetPresetHotkeysAddChapterTooltip"));
 	removeChapterButton =
 		new QPushButton(obs_module_text("SetPresetHotkeyRemoveChapter"),
 				presetChaptersDialog);
+	removeChapterButton->setToolTip(obs_module_text("SetPresetHotkeyRemoveChapterTooltip"));
 	buttonsLayout->addWidget(addChapterButton);
 	buttonsLayout->addWidget(removeChapterButton);
 	dialogLayout->addLayout(buttonsLayout);
@@ -858,6 +891,7 @@ QDialog *ChapterMarkerDock::createIgnoredScenesUI()
 	ignoredScenesListWidget = new QListWidget(dialog);
 	ignoredScenesListWidget->setSelectionMode(
 		QAbstractItemView::MultiSelection);
+	ignoredScenesListWidget->setToolTip(obs_module_text("IgnoredScenesTooltip"));
 
 	// Disable horizontal scrolling
 	ignoredScenesListWidget->setHorizontalScrollBarPolicy(
