@@ -26,6 +26,7 @@ class ChapterMarkerDock : public QFrame {
 public:
 	ChapterMarkerDock(QWidget *parent = nullptr);
 	~ChapterMarkerDock();
+	AnnotationDock *annotationDock;
 
 	QString getChapterName() const;
 	void setExportTextFilePath(const QString &filePath);
@@ -78,9 +79,6 @@ public:
 	void onAddAnnotation(const QString &annotationText,
 			     const QString &annotationSource);
 
-	AnnotationDock *annotationDock; // Pointer to the annotation dock
-
-
 signals:
 	void addChapterMarkerSignal(const QString &chapterName,
 				    const QString &chapterSource);
@@ -90,8 +88,7 @@ signals:
 public slots:
 	void onAddChapterMarkerButton();
 	void onSettingsClicked();
-	void
-	onAnnotationClicked(bool startup); // New slot for annotation button
+	void onAnnotationClicked(bool startup);
 	void onSceneChanged();
 	void onRecordingStopped();
 	void onPreviousChapterSelected();
@@ -139,7 +136,7 @@ private:
 	QPushButton *saveChapterMarkerButton;
 	QPushButton *settingsButton;
 	QPushButton *setIgnoredScenesButton;
-	QPushButton *annotationButton; // New button for annotation dock
+	QPushButton *annotationButton;
 	QPushButton *setPresetChaptersButton;
 
 	QLabel *currentChapterTextLabel;
