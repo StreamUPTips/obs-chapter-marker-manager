@@ -36,9 +36,9 @@ ChapterMarkerDock::ChapterMarkerDock(QWidget *parent)
 	  settingsButton(new QPushButton(this)),
 	  currentChapterTextLabel(
 		  new QLabel(obs_module_text("CurrentChapterLabel"), this)),
+	  settingsDialog(nullptr),
 	  currentChapterNameLabel(
 		  new QLabel(obs_module_text("RecordingNotActive"), this)),
-	  settingsDialog(nullptr),
 	  chapterOnSceneChangeCheckbox(nullptr),
 	  showPreviousChaptersCheckbox(nullptr),
 	  exportChaptersToTextCheckbox(nullptr),
