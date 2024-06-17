@@ -422,7 +422,7 @@ bool obs_module_load()
 	blog(LOG_INFO, "[StreamUP Record Chapter Manager] loaded version %s",
 	     PROJECT_VERSION);
 
-	if (obs_get_version() >= MAKE_SEMANTIC_VERSION(30, 1, 9)) {
+	if (obs_get_version() >= MAKE_SEMANTIC_VERSION(30, 2, 0)) {
 		void *handle = os_dlopen("obs-frontend-api");
 		obs_frontend_recording_add_chapter_wrapper =
 			(bool (*)(const char *name))os_dlsym(

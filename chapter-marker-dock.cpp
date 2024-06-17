@@ -132,7 +132,7 @@ void ChapterMarkerDock::setupConnections()
 
 	// Annotation button
 	connect(annotationButton, &QPushButton::clicked, this,
-		&ChapterMarkerDock::loadAnnotationDock);
+		&ChapterMarkerDock::onAnnotationClicked);
 
 	// Previous Chapter list
 	connect(previousChaptersList, &QListWidget::itemClicked, this,
@@ -380,13 +380,9 @@ void ChapterMarkerDock::loadAnnotationDock()
 		dock->setFeatures(QDockWidget::DockWidgetMovable |
 				  QDockWidget::DockWidgetFloatable);
 		dock->setFloating(true);
+		dock->hide();
 		obs_frontend_add_dock(dock);
-
-		// Show the dock immediately after adding it
-		dock->show();
-		dock->raise();
 #endif
-
 		obs_frontend_pop_ui_translation();
 	}
 }
@@ -537,10 +533,11 @@ void ChapterMarkerDock::setupSettingsExportGroup(QVBoxLayout *mainLayout)
 	insertChapterMarkersCheckbox->setChecked(
 		insertChapterMarkersInVideoEnabled);
 
-#if LIBOBS_API_VER < MAKE_SEMANTIC_VERSION(30, 1, 9)
-	insertChapterMarkersCheckbox->setEnabled(false);
-	insertChapterMarkersCheckbox->setChecked(false);
-#endif
+	if (obs_get_version() < MAKE_SEMANTIC_VERSION(30, 2, 0))
+	{
+		insertChapterMarkersCheckbox->setEnabled(false);
+		insertChapterMarkersCheckbox->setChecked(false);
+	}
 
 	// Create check boxes
 	exportChaptersToFileCheckbox =
