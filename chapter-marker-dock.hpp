@@ -89,6 +89,7 @@ public slots:
 	void onAddChapterMarkerButton();
 	void onSettingsClicked();
 	void onAnnotationClicked(bool startup);
+	void loadAnnotationDock();
 	void onSceneChanged();
 	void onRecordingStopped();
 	void onPreviousChapterSelected();

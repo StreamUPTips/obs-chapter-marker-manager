@@ -132,7 +132,7 @@ void ChapterMarkerDock::setupConnections()
 
 	// Annotation button
 	connect(annotationButton, &QPushButton::clicked, this,
-		&ChapterMarkerDock::onAnnotationClicked);
+		&ChapterMarkerDock::loadAnnotationDock);
 
 	// Previous Chapter list
 	connect(previousChaptersList, &QListWidget::itemClicked, this,
@@ -270,7 +270,6 @@ void ChapterMarkerDock::setupMainDockPreviousChaptersGroup(
 void ChapterMarkerDock::refreshMainDockUI()
 {
 	previousChaptersGroup->setVisible(showPreviousChaptersEnabled);
-	onAnnotationClicked(true);
 }
 
 //--------------------MAIN DOCK UI EVENT HANDLERS--------------------
@@ -357,15 +356,8 @@ void ChapterMarkerDock::clearPreviousChaptersGroup()
 	timestamps.clear();
 }
 
-void ChapterMarkerDock::onAnnotationClicked(bool refresh)
+void ChapterMarkerDock::loadAnnotationDock()
 {
-	if (!exportChaptersToFileEnabled && !refresh) {
-		showFeedbackMessage(
-			obs_module_text("AnnotationErrorExportNotActive"),
-			true);
-		return;
-	}
-
 	const auto main_window =
 		static_cast<QMainWindow *>(obs_frontend_get_main_window());
 	obs_frontend_push_ui_translation(obs_module_get_string);
@@ -397,8 +389,17 @@ void ChapterMarkerDock::onAnnotationClicked(bool refresh)
 
 		obs_frontend_pop_ui_translation();
 	}
+}
 
-	// Show and raise the dock whether it was just created or already existed
+void ChapterMarkerDock::onAnnotationClicked(bool refresh)
+{
+	if (!exportChaptersToFileEnabled && !refresh) {
+		showFeedbackMessage(
+			obs_module_text("AnnotationErrorExportNotActive"),
+			true);
+		return;
+	}
+
 	if (!refresh) {
 		annotationDock->parentWidget()->show();
 		annotationDock->parentWidget()->raise();
@@ -536,7 +537,7 @@ void ChapterMarkerDock::setupSettingsExportGroup(QVBoxLayout *mainLayout)
 	insertChapterMarkersCheckbox->setChecked(
 		insertChapterMarkersInVideoEnabled);
 
-#if LIBOBS_API_VER < MAKE_SEMANTIC_VERSION(30, 2, 0)
+#if LIBOBS_API_VER < MAKE_SEMANTIC_VERSION(30, 1, 9)
 	insertChapterMarkersCheckbox->setEnabled(false);
 	insertChapterMarkersCheckbox->setChecked(false);
 #endif
