@@ -160,6 +160,7 @@ private:
 	QHBoxLayout *textCheckboxLayout;
 	QHBoxLayout *xmlCheckboxLayout;
 	QVBoxLayout *exportSettingsLayout;
+	bool incompatibleFileTypeMessageShown = false;
 };
 
 #endif // CHAPTER_MARKER_DOCK_HPP

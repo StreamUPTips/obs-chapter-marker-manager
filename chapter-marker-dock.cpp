@@ -20,6 +20,7 @@
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QDockWidget>
+#include <qmessagebox.h>
 
 #define QT_TO_UTF8(str) str.toUtf8().constData()
 
@@ -318,7 +319,9 @@ void ChapterMarkerDock::onRecordingStopped()
 		return;
 	}
 
-	updateCurrentChapterLabel(obs_module_text("RecordingNotActive"));
+	currentChapterNameLabel->setText(obs_module_text("RecordingNotActive"));
+	currentChapterNameLabel->setStyleSheet("color: red;");
+
 
 	showFeedbackMessage(obs_module_text("RecordingFinished"), false);
 
@@ -330,6 +333,7 @@ void ChapterMarkerDock::onRecordingStopped()
 	blog(LOG_INFO, "[StreamUP Record Chapter Manager] chapterCount: %d",
 	     chapterCount);
 
+	incompatibleFileTypeMessageShown = false;
 	chapterCount = 1; // Reset chapter count to 1
 }
 
@@ -1226,7 +1230,6 @@ void ChapterMarkerDock::addChapterMarker(const QString &chapterName,
 		}
 	}
 
-	// Only add the chapter marker to the recording if it's not the first run
 	if (!isFirstRunInRecording && insertChapterMarkersInVideoEnabled &&
 	    obs_frontend_recording_add_chapter_wrapper) {
 		bool success = obs_frontend_recording_add_chapter_wrapper(
@@ -1234,12 +1237,23 @@ void ChapterMarkerDock::addChapterMarker(const QString &chapterName,
 		if (!success) {
 			blog(LOG_INFO,
 			     "[StreamUP Record Chapter Manager] You have selected to insert chapters into video file. You are not using a compatible file type.");
-			showFeedbackMessage(
-				obs_module_text("IncompatibleFileType"), true);
-		}
-	}
 
-	// Log and handle the result of adding the chapter marker
+			if (!incompatibleFileTypeMessageShown) {
+				QMessageBox msgBox;
+				msgBox.setWindowTitle(obs_module_text("StreamUPChapterMarkerManagerError"));
+				msgBox.setIcon(QMessageBox::Warning);
+				msgBox.setText(obs_module_text(
+					"IncompatibleFileTypeError"));
+				msgBox.setInformativeText(obs_module_text(
+					"IncompatibleFileType"));
+				msgBox.setStandardButtons(QMessageBox::Ok);
+				msgBox.setDefaultButton(QMessageBox::Ok);
+				msgBox.exec();
+
+				incompatibleFileTypeMessageShown = true;
+			}
+		}
+	} // Log and handle the result of adding the chapter marker
 	QString timestamp = getCurrentRecordingTime();
 
 	// Always write to the chapter file if enabled
@@ -1256,8 +1270,7 @@ void ChapterMarkerDock::addChapterMarker(const QString &chapterName,
 	     QT_TO_UTF8(fullChapterName));
 	updateCurrentChapterLabel(fullChapterName);
 	showFeedbackMessage(
-		QString("%1 %2")
-			.arg(obs_module_text("IncompatibleFileType"))
+		QString("%1")
 			.arg(fullChapterName),
 		false);
 
