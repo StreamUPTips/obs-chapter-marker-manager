@@ -10,8 +10,8 @@
 AnnotationDock::AnnotationDock(ChapterMarkerDock *chapterDock, QWidget *parent)
 	: QFrame(parent),
 	  annotationEdit(new QTextEdit(this)),
-	  saveChapterMarkerButton(new QPushButton(obs_module_text("SaveAnnotationText"), this)),
 	  feedbackLabel(new QLabel("", this)),
+	  saveChapterMarkerButton(new QPushButton(obs_module_text("SaveAnnotationText"), this)),
 	  chapterDock(chapterDock)
 {
 	setupUI();
