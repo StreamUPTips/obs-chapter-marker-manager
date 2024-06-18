@@ -11,6 +11,7 @@
 #include <QTimer>
 #include <obs-frontend-api.h>
 
+
 class ChapterMarkerDock; // Forward declaration
 
 class AnnotationDock : public QFrame {
@@ -23,6 +24,10 @@ public:
 
 	void updateInputState(bool enabled);
 
+	QTextEdit *annotationEdit;
+	QLabel *feedbackLabel;
+	QTimer feedbackTimer;
+
 public slots:
 	void onSaveAnnotationButton();
 
@@ -30,12 +35,9 @@ private:
 	void setupUI();
 	void setupConnections();
 
-	QTextEdit *annotationEdit;
 	QPushButton *saveChapterMarkerButton;
-	QLabel *feedbackLabel;
-	QTimer feedbackTimer;
 
-	ChapterMarkerDock *chapterDock; // Pointer to ChapterMarkerDock
+	ChapterMarkerDock *chapterDock;
 };
 
 #endif // ANNOTATION_DOCK_HPP

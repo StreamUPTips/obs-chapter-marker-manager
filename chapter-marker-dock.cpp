@@ -1,26 +1,25 @@
-#include "chapter-marker-dock.hpp"
 #include "annotation-dock.hpp"
+#include "chapter-marker-dock.hpp"
 #include "streamup-record-chapter-manager.hpp"
+#include <obs-data.h>
 #include <obs-frontend-api.h>
 #include <obs-module.h>
-#include <obs-data.h>
-#include <QHBoxLayout>
 #include <QApplication>
-#include <QStyle>
-#include <QFile>
-#include <QTextStream>
-#include <QDir>
-#include <QComboBox>
-#include <QListWidget>
 #include <QCheckBox>
+#include <QComboBox>
 #include <QDialogButtonBox>
+#include <QDir>
+#include <QDockWidget>
+#include <QFile>
 #include <QFrame>
 #include <QGroupBox>
-#include <QMainWindow>
-#include <QVBoxLayout>
 #include <QHBoxLayout>
-#include <QDockWidget>
-#include <qmessagebox.h>
+#include <QListWidget>
+#include <QMainWindow>
+#include <QMessageBox>
+#include <QStyle>
+#include <QTextStream>
+#include <QVBoxLayout>
 
 #define QT_TO_UTF8(str) str.toUtf8().constData()
 
@@ -933,21 +932,16 @@ void ChapterMarkerDock::writeChapterToTextFile(const QString &chapterName, const
 		return;
 	}
 
-	QFile file(exportTextFilePath);
-	if (file.open(QIODevice::Append | QIODevice::Text)) {
-		QTextStream out(&file);
-		QString fullChapterName = chapterName;
+	QString fullChapterName = chapterName;
 
-		// Ensure the chapter source is only appended once
-		if (addChapterSourceEnabled && !chapterName.contains(chapterSource)) {
-			fullChapterName += " (" + chapterSource + ")";
-		}
+	// Ensure the chapter source is only appended once
+	if (addChapterSourceEnabled && !chapterName.contains(chapterSource)) {
+		fullChapterName += " (" + chapterSource + ")";
+	}
 
-		out << timestamp << " - " << fullChapterName << "\n";
-		file.close();
-	} else {
-		blog(LOG_ERROR, "[StreamUP Record Chapter Manager] Failed to open chapter file: %s",
-		     QT_TO_UTF8(exportTextFilePath));
+	QString content = QString("%1 - %2\n").arg(timestamp, fullChapterName);
+	if (!writeToFile(exportTextFilePath, content)) {
+		blog(LOG_ERROR, "[StreamUP Record Chapter Manager] Failed to open text file: %s", QT_TO_UTF8(exportTextFilePath));
 	}
 }
 
@@ -968,22 +962,19 @@ void ChapterMarkerDock::writeChapterToXMLFile(const QString &chapterName, const 
 		return;
 	}
 
-	QFile file(exportXMLFilePath);
-	if (file.open(QIODevice::Append | QIODevice::Text)) {
-		QTextStream out(&file);
-		QString fullChapterName = chapterName;
+	QString fullChapterName = chapterName;
 
-		if (addChapterSourceEnabled && !chapterName.contains(chapterSource)) {
-			fullChapterName += " (" + chapterSource + ")";
-		}
+	if (addChapterSourceEnabled && !chapterName.contains(chapterSource)) {
+		fullChapterName += " (" + chapterSource + ")";
+	}
 
-		out << "<Chapter>\n";
-		out << "  <Timestamp>" << timestamp << "</Timestamp>\n";
-		out << "  <Name>" << fullChapterName << "</Name>\n";
-		out << "</Chapter>\n";
+	QString content = QString("<Chapter>\n"
+				  "  <Timestamp>%1</Timestamp>\n"
+				  "  <Name>%2</Name>\n"
+				  "</Chapter>\n")
+				  .arg(timestamp, fullChapterName);
 
-		file.close();
-	} else {
+	if (!writeToFile(exportXMLFilePath, content)) {
 		blog(LOG_ERROR, "[StreamUP Record Chapter Manager] Failed to open XML file: %s", QT_TO_UTF8(exportXMLFilePath));
 	}
 }
@@ -991,8 +982,24 @@ void ChapterMarkerDock::writeChapterToXMLFile(const QString &chapterName, const 
 void ChapterMarkerDock::writeAnnotationToFiles(const QString &annotationText, const QString &timestamp,
 					       const QString &annotationSource)
 {
-	if (!exportChaptersToFileEnabled) {
+	if (!obs_frontend_recording_active()) {
+		setFeedbackLabel(obs_module_text("AnnotationErrorOutputNotActive"), "error");
 		return;
+	}
+
+	if (!exportChaptersToFileEnabled) {
+		setFeedbackLabel(obs_module_text("NoExportMethod"), "error");
+		return;
+	}
+
+	if (annotationText.isEmpty()) {
+		setFeedbackLabel(obs_module_text("AnnotationErrorTextIsEmpty"), "error");
+		return;
+	}
+
+	// Check and create export files if paths are empty
+	if (exportTextFilePath.isEmpty() || exportXMLFilePath.isEmpty()) {
+		createExportFiles();
 	}
 
 	// Prepare the full annotation text including the source
@@ -1001,43 +1008,53 @@ void ChapterMarkerDock::writeAnnotationToFiles(const QString &annotationText, co
 
 	// Writing to text file if enabled
 	if (exportChaptersToTextEnabled) {
-		if (exportTextFilePath.isEmpty()) {
-			blog(LOG_ERROR, "[StreamUP Record Chapter Manager] Text file path is not set, creating a new file.");
-			createExportFiles();
-		}
-
-		QFile textFile(exportTextFilePath);
-		if (textFile.open(QIODevice::Append | QIODevice::Text)) {
-			QTextStream out(&textFile);
-			out << timestamp << " - " << fullAnnotationText << "\n";
-			textFile.close();
-		} else {
+		if (!writeToFile(exportTextFilePath, QString("%1 - %2\n").arg(timestamp, fullAnnotationText))) {
 			blog(LOG_ERROR, "[StreamUP Record Chapter Manager] Failed to open text file: %s",
 			     QT_TO_UTF8(exportTextFilePath));
+			return;
 		}
 	}
 
 	// Writing to XML file if enabled
 	if (exportChaptersToXMLEnabled) {
-		if (exportXMLFilePath.isEmpty()) {
-			blog(LOG_ERROR, "[StreamUP Record Chapter Manager] XML file path is not set, creating a new file.");
-			createExportFiles();
-		}
+		QString xmlContent = QString("<Annotation>\n"
+					     "  <Timestamp>%1</Timestamp>\n"
+					     "  <Text>%2</Text>\n"
+					     "  <Source>%3</Source>\n"
+					     "</Annotation>\n")
+					     .arg(timestamp, annotationText, annotationSource);
 
-		QFile xmlFile(exportXMLFilePath);
-		if (xmlFile.open(QIODevice::Append | QIODevice::Text)) {
-			QTextStream out(&xmlFile);
-			out << "<Annotation>\n";
-			out << "  <Timestamp>" << timestamp << "</Timestamp>\n";
-			out << "  <Text>" << annotationText << "</Text>\n";
-			out << "  <Source>" << annotationSource << "</Source>\n";
-			out << "</Annotation>\n";
-			xmlFile.close();
-		} else {
+		if (!writeToFile(exportXMLFilePath, xmlContent)) {
 			blog(LOG_ERROR, "[StreamUP Record Chapter Manager] Failed to open XML file: %s",
 			     QT_TO_UTF8(exportXMLFilePath));
+			return;
 		}
 	}
+
+	setFeedbackLabel(obs_module_text("AnnotationSaved"), "good");
+	annotationDock->annotationEdit->clear();
+}
+
+void ChapterMarkerDock::setFeedbackLabel(const QString &text, const QString &themeID)
+{
+	annotationDock->feedbackLabel->setText(text);
+	annotationDock->feedbackLabel->setProperty("themeID", themeID);
+	style()->unpolish(annotationDock->feedbackLabel);
+	style()->polish(annotationDock->feedbackLabel);
+	annotationDock->feedbackTimer.start();
+}
+
+bool ChapterMarkerDock::writeToFile(const QString &filePath, const QString &content)
+{
+	QFile file(filePath);
+	if (!file.open(QIODevice::Append | QIODevice::Text)) {
+		return false;
+	}
+
+	QTextStream out(&file);
+	out << content;
+	file.close();
+	return true;
 }
 
 //--------------------MISC EVENT HANDLERS--------------------

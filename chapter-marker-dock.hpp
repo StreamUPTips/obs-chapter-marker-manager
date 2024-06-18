@@ -31,9 +31,7 @@ public:
 	QString getChapterName() const;
 	void setExportTextFilePath(const QString &filePath);
 	void setExportXMLFilePath(const QString &filePath);
-	void writeChapterToXMLFile(const QString &chapterName,
-				   const QString &timestamp,
-				   const QString &chapterSource);
+	void writeChapterToXMLFile(const QString &chapterName, const QString &timestamp, const QString &chapterSource);
 
 	QString getDefaultChapterName() const { return defaultChapterName; }
 
@@ -42,11 +40,8 @@ public:
 	void createExportFiles();
 	void showFeedbackMessage(const QString &message, bool isError);
 	void clearPreviousChaptersGroup();
-	void writeChapterToTextFile(const QString &chapterName,
-				    const QString &timestamp,
-				    const QString &chapterSource);
-	void addChapterMarker(const QString &chapterName,
-			      const QString &chapterSource);
+	void writeChapterToTextFile(const QString &chapterName, const QString &timestamp, const QString &chapterSource);
+	void addChapterMarker(const QString &chapterName, const QString &chapterSource);
 	bool exportChaptersToTextEnabled;
 	bool exportChaptersToXMLEnabled;
 	bool exportChaptersToFileEnabled;
@@ -61,9 +56,7 @@ public:
 	int chapterCount;
 
 	void setAnnotationDock(AnnotationDock *dock);
-	void writeAnnotationToFiles(const QString &chapterName,
-				    const QString &timestamp,
-				    const QString &chapterSource);
+	void writeAnnotationToFiles(const QString &chapterName, const QString &timestamp, const QString &chapterSource);
 	void applyThemeIDToButton(QPushButton *button, const QString &themeID);
 	QDialog *settingsDialog;
 	void LoadSettings(obs_data_t *settings);
@@ -74,16 +67,12 @@ public:
 	void LoadPresetChapters(obs_data_t *settings);
 	QStringList presetChapters;
 	QMap<QString, obs_hotkey_id> chapterHotkeys;
-	void onAddChapterMarker(const QString &chapterName,
-				const QString &chapterSource);
-	void onAddAnnotation(const QString &annotationText,
-			     const QString &annotationSource);
+	void onAddChapterMarker(const QString &chapterName, const QString &chapterSource);
+	void onAddAnnotation(const QString &annotationText, const QString &annotationSource);
 
 signals:
-	void addChapterMarkerSignal(const QString &chapterName,
-				    const QString &chapterSource);
-	void addAnnotationSignal(const QString &annotationText,
-				 const QString &annotationSource);
+	void addChapterMarkerSignal(const QString &chapterName, const QString &chapterSource);
+	void addAnnotationSignal(const QString &annotationText, const QString &annotationSource);
 
 public slots:
 	void onAddChapterMarkerButton();
@@ -129,6 +118,10 @@ private:
 	void setupSettingsExportGroup(QVBoxLayout *mainLayout);
 	void onExportChaptersToFileToggled(bool checked);
 	void onChapterOnSceneChangeToggled(bool checked);
+
+	void setFeedbackLabel(const QString &text, const QString &themeID);
+	bool writeToFile(const QString &filePath, const QString &content);
+
 	QDialog *createIgnoredScenesUI();
 	QDialog *ignoredScenesDialog;
 	QGroupBox *sceneChangeSettingsGroup;

@@ -167,6 +167,16 @@ void WebsocketRequestGetCurrentChapterMarker(obs_data_t *request_data, obs_data_
 
 void WebsocketRequestSetAnnotation(obs_data_t *request_data, obs_data_t *response_data, void *)
 {
+	// Retrieve annotation text and source from the request data
+	const char *annotationText = obs_data_get_string(request_data, "annotationText");
+	const char *annotationSource = obs_data_get_string(request_data, "annotationSource");
+
+	// Convert to QString for easier handling
+	QString qAnnotationText = QString::fromUtf8(annotationText ? annotationText : "");
+	QString qAnnotationSource = QString::fromUtf8(annotationSource ? annotationSource : "");
+
+	emit chapterMarkerDock->addAnnotationSignal(qAnnotationText, qAnnotationSource);
+
 	// Check if the recording is active
 	if (!obs_frontend_recording_active()) {
 		// Update the response to indicate failure because recording is not active
@@ -175,13 +185,6 @@ void WebsocketRequestSetAnnotation(obs_data_t *request_data, obs_data_t *respons
 		return;
 	}
 
-	// Retrieve annotation text and source from the request data
-	const char *annotationText = obs_data_get_string(request_data, "annotationText");
-	const char *annotationSource = obs_data_get_string(request_data, "annotationSource");
-
-	// Convert to QString for easier handling
-	QString qAnnotationText = QString::fromUtf8(annotationText ? annotationText : "");
-	QString qAnnotationSource = QString::fromUtf8(annotationSource ? annotationSource : "");
 
 	// If annotationText is empty, return an error
 	if (qAnnotationText.isEmpty()) {
@@ -198,7 +201,6 @@ void WebsocketRequestSetAnnotation(obs_data_t *request_data, obs_data_t *respons
 
 	// Emit the signal to add the annotation
 	if (chapterMarkerDock) {
-		emit chapterMarkerDock->addAnnotationSignal(qAnnotationText, qAnnotationSource);
 
 		// Update the response to indicate success
 		obs_data_set_bool(response_data, "success", true);
