@@ -127,7 +127,6 @@ private:
 	QGroupBox *sceneChangeSettingsGroup;
 	QLineEdit *chapterNameInput;
 
-	QPushButton *saveChapterMarkerButton;
 	QPushButton *settingsButton;
 	QPushButton *setIgnoredScenesButton;
 	QPushButton *annotationButton;
@@ -139,6 +138,8 @@ private:
 	QTimer feedbackTimer;
 	QListWidget *previousChaptersList;
 	QGroupBox *previousChaptersGroup;
+
+	QPushButton *saveChapterMarkerButton;
 
 	QLineEdit *defaultChapterNameEdit;
 	QCheckBox *showPreviousChaptersCheckbox;
