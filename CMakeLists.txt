@@ -31,6 +31,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   annotation-dock.hpp
   obs-websocket-api.h
   resources.qrc
+  .clang-format
   version.h)
 
 if(BUILD_OUT_OF_TREE)

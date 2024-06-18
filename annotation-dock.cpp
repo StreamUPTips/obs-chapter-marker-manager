@@ -32,7 +32,7 @@ void AnnotationDock::setupUI()
 	mainLayout->addWidget(saveChapterMarkerButton);
 	mainLayout->addWidget(feedbackLabel);
 
-	feedbackLabel->setStyleSheet("color: green;");
+	feedbackLabel->setProperty("themeID", "good");
 	setLayout(mainLayout);
 }
 
@@ -52,7 +52,7 @@ void AnnotationDock::onSaveAnnotationButton()
 	if (!obs_frontend_recording_active()) {
 		feedbackLabel->setText(
 			obs_module_text("AnnotationErrorOutputNotActive"));
-		feedbackLabel->setStyleSheet("color: red;");
+		feedbackLabel->setProperty("themeID", "error");
 		feedbackTimer.start();
 		return;
 	}
@@ -61,7 +61,7 @@ void AnnotationDock::onSaveAnnotationButton()
 	if (annotationText.isEmpty()) {
 		feedbackLabel->setText(
 			obs_module_text("AnnotationErrorTextIsEmpty"));
-		feedbackLabel->setStyleSheet("color: red;");
+		feedbackLabel->setProperty("themeID", "error");
 		feedbackTimer.start();
 		return;
 	}
@@ -71,7 +71,8 @@ void AnnotationDock::onSaveAnnotationButton()
 					    obs_module_text("SourceManual"));
 
 	feedbackLabel->setText(obs_module_text("AnnotationSaved"));
-	feedbackLabel->setStyleSheet("color: green;");
+	feedbackLabel->setProperty("themeID", "good");
+
 	feedbackTimer.start();
 	annotationEdit->clear();
 }
