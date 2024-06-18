@@ -389,7 +389,11 @@ void ChapterMarkerDock::showFeedbackMessage(const QString &message, bool isError
 {
 	feedbackLabel->setWordWrap(true);
 	feedbackLabel->setText(message);
-	feedbackLabel->setProperty(isError ? "themeID", "good" : "themeID", "error");
+	if (isError) {
+		feedbackLabel->setProperty("themeID", "error");
+	} else {
+		feedbackLabel->setProperty("themeID", "good");
+	}
 	feedbackTimer.start();
 }
 
