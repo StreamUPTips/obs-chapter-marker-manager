@@ -1,20 +1,21 @@
-# StreamUP plugin for OBS Studio
+# Overview​
+The StreamUP Chapter Marker Manager is your all in one solution for creating and tracking chapter markers in your recordings in OBS. Since creating content on multiple platforms is so important nowadays, this will help you keep track of the moments you want to make videos out of.
 
-A multi-tool plugin for OBS Studio that will allow you to check for OBS plugin updates, install StreamUP products and check if you have all the plugins for them to work correctly.
+There are many different ways you can create chapter markers and annotations:
+- In the OBS UI via the docks.
+- WebSocket. (This means it is compatible with software like Streamer.Bot)
+- Hotkeys. (You can even set chapter names to use on different hotkeys!)
+- Automatically. (This will automatically add chapter markers when you change scene. Don’t worry, you can set scenes to ignore!)
 
-[StreamUP](https://streamup.tips) create the most advanced plugins for your streams. Since they are advanced they tap into the power of a lot of OBS plugins to create cool effects, widgets and more. This tool will make sure you have all of the relevant plugins installed and up to date!
+All of these chapter markers can be exported in various ways:
+- Insert them into the actual video. (This will require OBS 30.2.0 and above. You will also need to use a compatible file type such as Hybrid mp4)
+- Export them to a text file.
+- Export them to an XML file.
 
-As an added bonus Andi added a full OBS plugin update checker so you can easily update all of your OBS plugins without having to search the OBS forums constantly. It will check for plugin updates at launch too.
+# Guide​
+If you want to find out more about the plugin and how to use it then please check out the [full guide](https://streamup.notion.site/OBS-Chapter-Marker-Manager-1567a7ed1438449cbbe8be87143568df?pvs=74)!
 
-# How To Use
-1. Under the '**Tools**' menu in OBS there is a submenu called '**StreamUP**' with the following options:
-    - **Install a Product** • Install a .StreamUP file into OBS.
-    - **Download Products** • A download link to download StreamUP products from the StreamUP website.
-    - **Check Product Requirements** • Check if you have all the OBS plugins installed and up to date for StreamUP products to function.
-    - **Check for OBS Plugin Updates** • Check if your currently installed OBS plugins are up to date.*
-    - **About** • Information and support links for the StreamUP OBS plugin.
-
-*Not all plugins are compatible, as more devs make them compatible, they will be added too. They just need to add their plugin name and version number to the Log file upon load.
+If you have any feedback or requests for this plugin please share them in the [StreamUP Discord server](https://discord.com/invite/RnDKRaVCEu?).
 
 # Build
 1. In-tree build
