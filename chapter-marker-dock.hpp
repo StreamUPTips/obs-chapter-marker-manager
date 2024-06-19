@@ -119,8 +119,9 @@ private:
 	void onExportChaptersToFileToggled(bool checked);
 	void onChapterOnSceneChangeToggled(bool checked);
 
-	void setFeedbackLabel(const QString &text, const QString &themeID);
+	void setAnnotationFeedbackLabel(const QString &text, const QString &themeID);
 	bool writeToFile(const QString &filePath, const QString &content);
+	void setChapterMarkerFeedbackLabel(const QString &text, const QString &themeID);
 
 	QDialog *createIgnoredScenesUI();
 	QDialog *ignoredScenesDialog;

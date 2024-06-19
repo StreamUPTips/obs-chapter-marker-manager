@@ -226,6 +226,7 @@ void ChapterMarkerDock::setupMainDockSaveButtonLayout(QVBoxLayout *mainLayout)
 void ChapterMarkerDock::setupMainDockFeedbackLabel(QVBoxLayout *mainLayout)
 {
 	feedbackLabel->setProperty("themeID", "good");
+	style()->polish(feedbackLabel);
 	feedbackLabel->setWordWrap(true);
 	mainLayout->addWidget(feedbackLabel);
 }
@@ -291,6 +292,8 @@ void ChapterMarkerDock::onRecordingStopped()
 
 	currentChapterNameLabel->setText(obs_module_text("RecordingNotActive"));
 	currentChapterNameLabel->setProperty("themeID", "error");
+	currentChapterNameLabel->style()->unpolish(currentChapterNameLabel);
+	currentChapterNameLabel->style()->polish(currentChapterNameLabel);
 
 	showFeedbackMessage(obs_module_text("RecordingFinished"), false);
 
@@ -382,17 +385,18 @@ void ChapterMarkerDock::updateCurrentChapterLabel(const QString &chapterName)
 
 	currentChapterNameLabel->setText(chapterName);
 
-	currentChapterNameLabel->setStyleSheet("color: white;");
+	 currentChapterNameLabel->setProperty("themeID", "good");
+	currentChapterNameLabel->style()->unpolish(currentChapterNameLabel);
+	currentChapterNameLabel->style()->polish(currentChapterNameLabel);
 }
 
 void ChapterMarkerDock::showFeedbackMessage(const QString &message, bool isError)
 {
 	feedbackLabel->setWordWrap(true);
-	feedbackLabel->setText(message);
 	if (isError) {
-		feedbackLabel->setProperty("themeID", "error");
+		setChapterMarkerFeedbackLabel(message, "error");
 	} else {
-		feedbackLabel->setProperty("themeID", "good");
+		setChapterMarkerFeedbackLabel(message, "good");
 	}
 	feedbackTimer.start();
 }
@@ -987,17 +991,17 @@ void ChapterMarkerDock::writeAnnotationToFiles(const QString &annotationText, co
 					       const QString &annotationSource)
 {
 	if (!obs_frontend_recording_active()) {
-		setFeedbackLabel(obs_module_text("AnnotationErrorOutputNotActive"), "error");
+		setAnnotationFeedbackLabel(obs_module_text("AnnotationErrorOutputNotActive"), "error");
 		return;
 	}
 
 	if (!exportChaptersToFileEnabled) {
-		setFeedbackLabel(obs_module_text("NoExportMethod"), "error");
+		setAnnotationFeedbackLabel(obs_module_text("NoExportMethod"), "error");
 		return;
 	}
 
 	if (annotationText.isEmpty()) {
-		setFeedbackLabel(obs_module_text("AnnotationErrorTextIsEmpty"), "error");
+		setAnnotationFeedbackLabel(obs_module_text("AnnotationErrorTextIsEmpty"), "error");
 		return;
 	}
 
@@ -1035,17 +1039,24 @@ void ChapterMarkerDock::writeAnnotationToFiles(const QString &annotationText, co
 		}
 	}
 
-	setFeedbackLabel(obs_module_text("AnnotationSaved"), "good");
+	setAnnotationFeedbackLabel(obs_module_text("AnnotationSaved"), "good");
 	annotationDock->annotationEdit->clear();
 }
 
-void ChapterMarkerDock::setFeedbackLabel(const QString &text, const QString &themeID)
+void ChapterMarkerDock::setAnnotationFeedbackLabel(const QString &text, const QString &themeID)
 {
 	annotationDock->feedbackLabel->setText(text);
 	annotationDock->feedbackLabel->setProperty("themeID", themeID);
-	style()->unpolish(annotationDock->feedbackLabel);
 	style()->polish(annotationDock->feedbackLabel);
 	annotationDock->feedbackTimer.start();
+}
+
+void ChapterMarkerDock::setChapterMarkerFeedbackLabel(const QString &text, const QString &themeID)
+{
+	feedbackLabel->setText(text);
+	feedbackLabel->setProperty("themeID", themeID);
+	style()->polish(feedbackLabel);
+	feedbackTimer.start();
 }
 
 bool ChapterMarkerDock::writeToFile(const QString &filePath, const QString &content)
@@ -1124,8 +1135,10 @@ void ChapterMarkerDock::addChapterMarker(const QString &chapterName, const QStri
 	}
 
 	blog(LOG_INFO, "[StreamUP Record Chapter Manager] Added chapter marker: %s", QT_TO_UTF8(fullChapterName));
+
 	updateCurrentChapterLabel(fullChapterName);
-	showFeedbackMessage(QString("%1").arg(fullChapterName), false);
+	QString feedbackMessage = QString("%1 %2").arg(obs_module_text("NewChapter")).arg(fullChapterName);
+	showFeedbackMessage(feedbackMessage, false);
 
 	// Update the global current chapter name
 	currentChapterName = fullChapterName;
