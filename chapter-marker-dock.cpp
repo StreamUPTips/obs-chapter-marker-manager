@@ -1,12 +1,14 @@
 #include "annotation-dock.hpp"
 #include "chapter-marker-dock.hpp"
 #include "streamup-record-chapter-manager.hpp"
+#include "version.h"
 #include <obs-data.h>
 #include <obs-frontend-api.h>
 #include <obs-module.h>
 #include <QApplication>
 #include <QCheckBox>
 #include <QComboBox>
+#include <qdesktopservices.h>
 #include <QDialogButtonBox>
 #include <QDir>
 #include <QDockWidget>
@@ -20,8 +22,6 @@
 #include <QStyle>
 #include <QTextStream>
 #include <QVBoxLayout>
-#include <qdesktopservices.h>
-#include <version.h>
 
 #define QT_TO_UTF8(str) str.toUtf8().constData()
 
