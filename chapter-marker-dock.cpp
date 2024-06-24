@@ -385,21 +385,34 @@ void ChapterMarkerDock::updateCurrentChapterLabel(const QString &chapterName)
 		return;
 	}
 
-	currentChapterNameLabel->setText(chapterName);
+	QFontMetrics metrics(currentChapterNameLabel->font());
+	int labelWidth = currentChapterNameLabel->width();
 
-	 currentChapterNameLabel->setProperty("themeID", "good");
+	QString elidedText = metrics.elidedText(chapterName, Qt::ElideRight, labelWidth);
+
+	currentChapterNameLabel->setText(elidedText);
+
+	currentChapterNameLabel->setProperty("themeID", "good");
 	currentChapterNameLabel->style()->unpolish(currentChapterNameLabel);
 	currentChapterNameLabel->style()->polish(currentChapterNameLabel);
 }
 
 void ChapterMarkerDock::showFeedbackMessage(const QString &message, bool isError)
 {
+	QFontMetrics metrics(feedbackLabel->font());
+	int labelWidth = feedbackLabel->width();
+
+	QString elidedText = metrics.elidedText(message, Qt::ElideRight, labelWidth);
+
 	feedbackLabel->setWordWrap(true);
+	feedbackLabel->setText(elidedText);
+
 	if (isError) {
-		setChapterMarkerFeedbackLabel(message, "error");
+		setChapterMarkerFeedbackLabel(elidedText, "error");
 	} else {
-		setChapterMarkerFeedbackLabel(message, "good");
+		setChapterMarkerFeedbackLabel(elidedText, "good");
 	}
+
 	feedbackTimer.start();
 }
 
