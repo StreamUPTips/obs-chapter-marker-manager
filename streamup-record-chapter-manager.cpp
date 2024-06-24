@@ -100,7 +100,7 @@ void WebsocketRequestSetChapterMarker(obs_data_t *request_data, obs_data_t *resp
 	if (!obs_frontend_recording_active()) {
 		// Update the response to indicate failure because recording is not active
 		obs_data_set_bool(response_data, "success", false);
-		obs_data_set_string(response_data, "message", obs_module_text("ChapterMarkerNotAdded"));
+		obs_data_set_string(response_data, "message", obs_module_text("ChapterMarkerNotActive"));
 		return;
 	}
 

@@ -20,6 +20,8 @@
 #include <QStyle>
 #include <QTextStream>
 #include <QVBoxLayout>
+#include <qdesktopservices.h>
+#include <version.h>
 
 #define QT_TO_UTF8(str) str.toUtf8().constData()
 
@@ -412,6 +414,34 @@ QDialog *ChapterMarkerDock::createSettingsUI()
 	setupSettingsGeneralGroup(mainLayout);
 	setupSettingsExportGroup(mainLayout);
 	setupSettingsAutoChapterGroup(mainLayout);
+
+	// Create the label with HTML formatted text
+	QString infoText =
+		QString("<br>"
+			"<a href='https://streamup.tips/product/obs-chapter-marker-manager'>StreamUP Chapter Marker Manager</a> • version %1"
+			"<br>"
+			"by <a href='https://doras.to/Andi'>Andi Stone (Andilippi)</a>")
+			.arg(PROJECT_VERSION);
+
+	QLabel *infoLabel = new QLabel(infoText, settingsDialog);
+	infoLabel->setTextFormat(Qt::RichText);
+	infoLabel->setTextInteractionFlags(Qt::TextBrowserInteraction);
+	infoLabel->setOpenExternalLinks(true);
+	infoLabel->setAlignment(Qt::AlignCenter);
+	mainLayout->addWidget(infoLabel);
+
+	// Create the 'Support my plugins' button
+	QPushButton *supportButton = new QPushButton("❤️ Support My Plugins ❤️", settingsDialog);
+	connect(supportButton, &QPushButton::clicked, this, []() { QDesktopServices::openUrl(QUrl("https://doras.to/Andi")); });
+
+	// Create a layout for the label and button
+	QVBoxLayout *infoLayout = new QVBoxLayout();
+	infoLayout->addWidget(infoLabel);
+	infoLayout->addWidget(supportButton);
+	infoLayout->setAlignment(Qt::AlignCenter);
+
+	// Add the info layout to the main layout
+	mainLayout->addLayout(infoLayout);
 
 	QDialogButtonBox *buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, settingsDialog);
 	connect(buttonBox, &QDialogButtonBox::accepted, this, &ChapterMarkerDock::saveSettingsAndCloseDialog);

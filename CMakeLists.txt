@@ -9,7 +9,7 @@ else()
   cmake_minimum_required(VERSION 3.18)
 endif()
 
-project(streamup-record-chapter-manager VERSION 1.0.0)
+project(streamup-record-chapter-manager VERSION 1.0.1)
 set(PROJECT_FULL_NAME "StreamUP Record Chapter Manager")
 
 # Set new UUIDs when you start to create a new plugin.
