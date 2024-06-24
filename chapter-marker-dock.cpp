@@ -902,6 +902,10 @@ void ChapterMarkerDock::saveIgnoredScenes()
 //--------------------FILE MANAGEMENT--------------------
 void ChapterMarkerDock::createExportFiles()
 {
+	if (!exportChaptersToFileEnabled) {
+		return;
+	}
+
 	obs_output_t *output = obs_frontend_get_recording_output();
 	if (!output) {
 		blog(LOG_ERROR, "[StreamUP Record Chapter Manager] Could not get the recording output.");
@@ -966,6 +970,7 @@ void ChapterMarkerDock::createExportFiles()
 	}
 }
 
+
 void ChapterMarkerDock::setExportTextFilePath(const QString &filePath)
 {
 	exportTextFilePath = filePath;
@@ -973,7 +978,7 @@ void ChapterMarkerDock::setExportTextFilePath(const QString &filePath)
 
 void ChapterMarkerDock::writeChapterToTextFile(const QString &chapterName, const QString &timestamp, const QString &chapterSource)
 {
-	if (!exportChaptersToTextEnabled || !exportChaptersToFileEnabled) {
+	if (!exportChaptersToFileEnabled || !exportChaptersToTextEnabled) {
 		return;
 	}
 
@@ -1003,31 +1008,29 @@ void ChapterMarkerDock::setExportXMLFilePath(const QString &filePath)
 
 void ChapterMarkerDock::writeChapterToXMLFile(const QString &chapterName, const QString &timestamp, const QString &chapterSource)
 {
-	if (!exportChaptersToXMLEnabled || !exportChaptersToFileEnabled) {
+	if (!exportChaptersToFileEnabled || !exportChaptersToXMLEnabled) {
 		return;
 	}
 
 	if (exportXMLFilePath.isEmpty()) {
-		blog(LOG_ERROR, "[StreamUP Record Chapter Manager] Chapter file path is not set, creating a new file.");
+		blog(LOG_ERROR, "[StreamUP Record Chapter Manager] XML file path is not set, creating a new file.");
 		createExportFiles();
 		return;
 	}
 
-	QString fullChapterName = chapterName;
-
-	if (addChapterSourceEnabled && !chapterName.contains(chapterSource)) {
-		fullChapterName += " (" + chapterSource + ")";
-	}
-
-	QString content = QString("<Chapter>\n"
-				  "  <Timestamp>%1</Timestamp>\n"
-				  "  <Name>%2</Name>\n"
-				  "</Chapter>\n")
-				  .arg(timestamp, fullChapterName);
-
-	if (!writeToFile(exportXMLFilePath, content)) {
+	QFile file(exportXMLFilePath);
+	if (!file.open(QIODevice::Append | QIODevice::Text)) {
 		blog(LOG_ERROR, "[StreamUP Record Chapter Manager] Failed to open XML file: %s", QT_TO_UTF8(exportXMLFilePath));
+		return;
 	}
+
+	QTextStream out(&file);
+	out << "  <Chapter>\n";
+	out << "    <Name>" << chapterName << "</Name>\n";
+	out << "    <Timestamp>" << timestamp << "</Timestamp>\n";
+	out << "    <Source>" << chapterSource << "</Source>\n";
+	out << "  </Chapter>\n";
+	file.close();
 }
 
 void ChapterMarkerDock::writeAnnotationToFiles(const QString &annotationText, const QString &timestamp,
