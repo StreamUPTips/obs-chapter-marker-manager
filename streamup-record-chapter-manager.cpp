@@ -94,6 +94,11 @@ static void FrontEndEventHandler(enum obs_frontend_event event, void *)
 //--------------------WEBSOCKET HANDLERS--------------------
 obs_websocket_vendor vendor = nullptr;
 
+void EmitWebSocketEvent(const char *event_type, obs_data_t *data)
+{
+	obs_websocket_vendor_emit_event(vendor, event_type, data);
+}
+
 void WebsocketRequestSetChapterMarker(obs_data_t *request_data, obs_data_t *response_data, void *)
 {
 	// Check if the recording is active

@@ -1087,6 +1087,14 @@ void ChapterMarkerDock::writeAnnotationToFiles(const QString &annotationText, co
 
 	setAnnotationFeedbackLabel(obs_module_text("AnnotationSaved"), "good");
 	annotationDock->annotationEdit->clear();
+
+	// Emit WebSocket event for the new annotation
+	obs_data_t *event_data = obs_data_create();
+	obs_data_set_string(event_data, "annotationText", QT_TO_UTF8(annotationText));
+	obs_data_set_string(event_data, "timestamp", QT_TO_UTF8(timestamp));
+	obs_data_set_string(event_data, "annotationSource", QT_TO_UTF8(annotationSource));
+	EmitWebSocketEvent("AnnotationSet", event_data);
+	obs_data_release(event_data);
 }
 
 void ChapterMarkerDock::setAnnotationFeedbackLabel(const QString &text, const QString &themeID)
@@ -1198,6 +1206,13 @@ void ChapterMarkerDock::addChapterMarker(const QString &chapterName, const QStri
 
 	chapters.insert(0, chapterName);
 	timestamps.insert(0, timestamp);
+
+	// Emit WebSocket event for the new chapter marker
+	obs_data_t *event_data = obs_data_create();
+	obs_data_set_string(event_data, "chapterName", QT_TO_UTF8(chapterName));
+	obs_data_set_string(event_data, "chapterSource", QT_TO_UTF8(chapterSource));
+	EmitWebSocketEvent("ChapterMarkerSet", event_data);
+	obs_data_release(event_data);
 
 	// After the first run, set the flag to false
 	isFirstRunInRecording = false;
