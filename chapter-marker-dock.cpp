@@ -1157,25 +1157,33 @@ void ChapterMarkerDock::addChapterMarker(const QString &chapterName, const QStri
 		}
 	}
 
-	if (!isFirstRunInRecording && insertChapterMarkersInVideoEnabled && obs_frontend_recording_add_chapter_wrapper) {
-		bool success = obs_frontend_recording_add_chapter_wrapper(QT_TO_UTF8(fullChapterName));
-		if (!success) {
-			blog(LOG_INFO,
-			     "[StreamUP Record Chapter Manager] You have selected to insert chapters into video file. You are not using a compatible file type.");
+	if (!isFirstRunInRecording && insertChapterMarkersInVideoEnabled) {
+		if (obs_frontend_recording_add_chapter_wrapper) {
+			bool success = obs_frontend_recording_add_chapter_wrapper(QT_TO_UTF8(fullChapterName));
+			if (!success) {
+				blog(LOG_INFO,
+				     "[StreamUP Record Chapter Manager] You have selected to insert chapters into video file. You are not using a compatible file type.");
 
-			if (!incompatibleFileTypeMessageShown) {
-				QMessageBox msgBox;
-				msgBox.setWindowTitle(obs_module_text("StreamUPChapterMarkerManagerError"));
-				msgBox.setIcon(QMessageBox::Warning);
-				msgBox.setText(obs_module_text("IncompatibleFileTypeError"));
-				msgBox.setInformativeText(obs_module_text("IncompatibleFileType"));
-				msgBox.setStandardButtons(QMessageBox::Ok);
-				msgBox.setDefaultButton(QMessageBox::Ok);
-				msgBox.exec();
+				if (!incompatibleFileTypeMessageShown) {
+					QMessageBox msgBox;
+					msgBox.setWindowTitle(obs_module_text("StreamUPChapterMarkerManagerError"));
+					msgBox.setIcon(QMessageBox::Warning);
+					msgBox.setText(obs_module_text("IncompatibleFileTypeError"));
+					msgBox.setInformativeText(obs_module_text("IncompatibleFileType"));
+					msgBox.setStandardButtons(QMessageBox::Ok);
+					msgBox.setDefaultButton(QMessageBox::Ok);
+					msgBox.exec();
 
-				incompatibleFileTypeMessageShown = true;
+					incompatibleFileTypeMessageShown = true;
+				}
 			}
 		}
+		auto ph = obs_get_proc_handler();
+		calldata cd;
+		calldata_init(&cd);
+		calldata_set_string(&cd, "chapter_name", QT_TO_UTF8(fullChapterName));
+		proc_handler_call(ph, "aitum_vertical_add_chapter", &cd);
+		calldata_free(&cd);
 	} // Log and handle the result of adding the chapter marker
 	QString timestamp = getCurrentRecordingTime();
 
