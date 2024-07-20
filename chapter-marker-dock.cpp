@@ -1189,6 +1189,12 @@ void ChapterMarkerDock::addChapterMarker(const QString &chapterName, const QStri
 				}
 			}
 		}
+		auto ph = obs_get_proc_handler();
+		calldata cd;
+		calldata_init(&cd);
+		calldata_set_string(&cd, "chapter_name", QT_TO_UTF8(fullChapterName));
+		proc_handler_call(ph, "aitum_vertical_add_chapter", &cd);
+		calldata_free(&cd);
 	} // Log and handle the result of adding the chapter marker
 	QString timestamp = getCurrentRecordingTime();
 
