@@ -54,6 +54,7 @@ public:
 	bool showPreviousChaptersEnabled;
 	bool addChapterSourceEnabled;
 	int chapterCount;
+	bool useIncrementalChapterNames;
 
 	void setAnnotationDock(AnnotationDock *dock);
 	void writeAnnotationToFiles(const QString &chapterName, const QString &timestamp, const QString &chapterSource);

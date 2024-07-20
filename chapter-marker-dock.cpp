@@ -269,8 +269,12 @@ void ChapterMarkerDock::onAddChapterMarkerButton()
 	QString chapterName = getChapterName();
 	if (chapterName.isEmpty()) {
 		// Use the default chapter name if the user did not provide one
-		chapterName = defaultChapterName + " " + QString::number(chapterCount);
-		chapterCount++;
+		if (useIncrementalChapterNames) {
+			chapterName = defaultChapterName + " " + QString::number(chapterCount);
+			chapterCount++;
+		} else {
+			chapterName = defaultChapterName;
+		}
 	}
 
 	addChapterMarker(chapterName, obs_module_text("SourceManual"));
@@ -488,6 +492,14 @@ void ChapterMarkerDock::setupSettingsGeneralGroup(QVBoxLayout *mainLayout)
 
 	// Add the horizontal layout to the general settings layout
 	generalSettingsLayout->addLayout(chapterNameLayout);
+
+	QCheckBox *useIncrementalChapterNamesCheckbox =
+		new QCheckBox(obs_module_text("UseIncrementalChapterNames"), generalSettingsGroup);
+	useIncrementalChapterNamesCheckbox->setToolTip(obs_module_text("UseIncrementalChapterNamesTooltip"));
+	generalSettingsLayout->addWidget(useIncrementalChapterNamesCheckbox);
+	useIncrementalChapterNamesCheckbox->setChecked(useIncrementalChapterNames);
+	connect(useIncrementalChapterNamesCheckbox, &QCheckBox::toggled, this,
+		[this](bool checked) { useIncrementalChapterNames = checked; });
 
 	showPreviousChaptersCheckbox = new QCheckBox(obs_module_text("GeneralSettingsShowChapterHistory"), generalSettingsGroup);
 	showPreviousChaptersCheckbox->setToolTip(obs_module_text("PreviousChaptersTooltip"));
@@ -970,7 +982,6 @@ void ChapterMarkerDock::createExportFiles()
 	}
 }
 
-
 void ChapterMarkerDock::setExportTextFilePath(const QString &filePath)
 {
 	exportTextFilePath = filePath;
@@ -1281,6 +1292,7 @@ void ChapterMarkerDock::LoadSettings(obs_data_t *settings)
 {
 	// Default chapter name
 	defaultChapterName = QString::fromUtf8(obs_data_get_string(settings, "defaultChapterName"));
+	useIncrementalChapterNames = obs_data_get_bool(settings, "useIncrementalChapterNames");
 
 	// Set chapter on scene change
 	chapterOnSceneChangeEnabled = obs_data_get_bool(settings, "chapterOnSceneChangeEnabled");
@@ -1324,6 +1336,7 @@ void ChapterMarkerDock::SaveSettings()
 	obs_data_set_string(settings, "defaultChapterName",
 			    defaultChapterNameEdit->text().isEmpty() ? obs_module_text("Chapter")
 								     : defaultChapterNameEdit->text().toStdString().c_str());
+	obs_data_set_bool(settings, "useIncrementalChapterNames", useIncrementalChapterNames);
 
 	// Set chapter on scene change
 	obs_data_set_bool(settings, "chapterOnSceneChangeEnabled", chapterOnSceneChangeCheckbox->isChecked());
