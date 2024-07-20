@@ -222,16 +222,18 @@ obs_hotkey_id addDefaultChapterMarkerHotkey = OBS_INVALID_HOTKEY_ID;
 
 static void SaveLoadHotkeys(obs_data_t *save_data, bool saving, void *)
 {
+	static bool is_first_run = true;
+
 	if (saving) {
-		// save default chapter hotkey
+		// Save default chapter hotkey
 		obs_data_array_t *hotkey_save_array = obs_hotkey_save(addDefaultChapterMarkerHotkey);
 		obs_data_set_array(save_data, "addDefaultChapterMarkerHotkey", hotkey_save_array);
 		obs_data_array_release(hotkey_save_array);
 
-		// load preset chapter hotkeys
+		// Save preset chapter hotkeys
 		chapterMarkerDock->SaveChapterHotkeys(save_data);
 
-		// save preset chapters
+		// Save preset chapters
 		obs_data_array_t *chaptersArray = obs_data_array_create();
 		for (const auto &chapter : chapterMarkerDock->presetChapters) {
 			obs_data_t *chapterData = obs_data_create();
@@ -243,16 +245,20 @@ static void SaveLoadHotkeys(obs_data_t *save_data, bool saving, void *)
 		obs_data_array_release(chaptersArray);
 
 	} else {
-		// load default chapter hotkey
+		// Load default chapter hotkey
 		obs_data_array_t *hotkey_load_array = obs_data_get_array(save_data, "addDefaultChapterMarkerHotkey");
 		obs_hotkey_load(addDefaultChapterMarkerHotkey, hotkey_load_array);
 		obs_data_array_release(hotkey_load_array);
 
-		// load preset chapter hokeys
-		chapterMarkerDock->LoadChapterHotkeys(save_data);
+		if (is_first_run) {
+			// Load preset chapter hotkeys
+			chapterMarkerDock->LoadChapterHotkeys(save_data);
 
-		// load preset chapters
-		chapterMarkerDock->LoadPresetChapters(save_data);
+			// Load preset chapters
+			chapterMarkerDock->LoadPresetChapters(save_data);
+
+			is_first_run = false;
+		}
 	}
 }
 
