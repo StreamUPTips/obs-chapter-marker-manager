@@ -347,18 +347,8 @@ void ChapterMarkerDock::loadAnnotationDock()
 		const QString title = QString::fromUtf8(obs_module_text("StreamUPChapterAnnotations"));
 		const auto name = "AnnotationDock";
 
-#if LIBOBS_API_VER >= MAKE_SEMANTIC_VERSION(30, 0, 0)
 		obs_frontend_add_dock_by_id(name, QT_TO_UTF8(title), annotationDock);
-#else
-		auto dock = new QDockWidget(main_window);
-		dock->setObjectName(name);
-		dock->setWindowTitle(title);
-		dock->setWidget(annotationDock);
-		dock->setFeatures(QDockWidget::DockWidgetMovable | QDockWidget::DockWidgetFloatable);
-		dock->setFloating(true);
-		dock->hide();
-		obs_frontend_add_dock(dock);
-#endif
+
 		obs_frontend_pop_ui_translation();
 	}
 }
@@ -535,11 +525,6 @@ void ChapterMarkerDock::setupSettingsExportGroup(QVBoxLayout *mainLayout)
 	insertChapterMarkersCheckbox->setToolTip(obs_module_text("ExportSettingsInsertIntoFileTooltip"));
 	exportSettingsLayout->addWidget(insertChapterMarkersCheckbox);
 	insertChapterMarkersCheckbox->setChecked(insertChapterMarkersInVideoEnabled);
-
-	if (obs_get_version() < MAKE_SEMANTIC_VERSION(30, 2, 0)) {
-		insertChapterMarkersCheckbox->setEnabled(false);
-		insertChapterMarkersCheckbox->setChecked(false);
-	}
 
 	// Create check boxes
 	exportChaptersToFileCheckbox = new QCheckBox(obs_module_text("ExportSettingsExportToFile"), exportSettingsGroup);

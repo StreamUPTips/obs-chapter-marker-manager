@@ -36,18 +36,7 @@ static void LoadChapterMarkerDock()
 		const QString title = QString::fromUtf8(obs_module_text("StreamUPChapterMarkerManager"));
 		const auto name = "ChapterMarkerDock";
 
-#if LIBOBS_API_VER >= MAKE_SEMANTIC_VERSION(30, 0, 0)
 		obs_frontend_add_dock_by_id(name, QT_TO_UTF8(title), chapterMarkerDock);
-#else
-		auto dock = new QDockWidget(main_window);
-		dock->setObjectName(name);
-		dock->setWindowTitle(title);
-		dock->setWidget(chapterMarkerDock);
-		dock->setFeatures(QDockWidget::DockWidgetMovable | QDockWidget::DockWidgetFloatable);
-		dock->setFloating(true);
-		dock->hide();
-		obs_frontend_add_dock(dock);
-#endif
 
 		obs_frontend_pop_ui_translation();
 	}
@@ -378,11 +367,9 @@ bool obs_module_load()
 {
 	blog(LOG_INFO, "[StreamUP Record Chapter Manager] loaded version %s", PROJECT_VERSION);
 
-	if (obs_get_version() >= MAKE_SEMANTIC_VERSION(30, 2, 0)) {
-		void *handle = os_dlopen("obs-frontend-api");
-		obs_frontend_recording_add_chapter_wrapper =
-			(bool (*)(const char *name))os_dlsym(handle, "obs_frontend_recording_add_chapter");
-	}
+	void *handle = os_dlopen("obs-frontend-api");
+	obs_frontend_recording_add_chapter_wrapper =
+		(bool (*)(const char *name))os_dlsym(handle, "obs_frontend_recording_add_chapter");
 
 	RegisterHotkeys();
 	RegisterWebsocketRequests();
