@@ -4,26 +4,34 @@
 #define ANNOTATION_DOCK_HPP
 
 #include <QFrame>
-#include <QTextEdit>
-#include <QPushButton>
-#include <QVBoxLayout>
 #include <QLabel>
+#include <QPushButton>
+#include <QTextEdit>
 #include <QTimer>
-#include <obs-frontend-api.h>
 
+// Forward declarations
+class ChapterMarkerDock;
+class QVBoxLayout;
+struct obs_frontend_event;
 
-class ChapterMarkerDock; // Forward declaration
-
+/**
+ * @class AnnotationDock
+ * @brief UI dock for adding annotations during recording
+ *
+ * Provides a text input interface for users to add timestamped annotations
+ * that are exported alongside chapter markers.
+ */
 class AnnotationDock : public QFrame {
 	Q_OBJECT
 
 public:
-	AnnotationDock(ChapterMarkerDock *chapterDock,
-		       QWidget *parent = nullptr);
+	explicit AnnotationDock(ChapterMarkerDock *chapterDock, QWidget *parent = nullptr);
 	~AnnotationDock();
 
+	// Public interface
 	void updateInputState(bool enabled);
 
+	// Public members (accessed by ChapterMarkerDock)
 	QTextEdit *annotationEdit;
 	QLabel *feedbackLabel;
 	QTimer feedbackTimer;
@@ -32,11 +40,14 @@ public slots:
 	void onSaveAnnotationButton();
 
 private:
+	// UI setup
 	void setupUI();
 	void setupConnections();
 
-	QPushButton *saveChapterMarkerButton;
+	// UI components
+	QPushButton *saveAnnotationButton;
 
+	// Parent reference
 	ChapterMarkerDock *chapterDock;
 };
 

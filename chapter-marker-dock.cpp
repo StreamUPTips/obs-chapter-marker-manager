@@ -1,5 +1,6 @@
-#include "annotation-dock.hpp"
 #include "chapter-marker-dock.hpp"
+#include "annotation-dock.hpp"
+#include "constants.hpp"
 #include "streamup-record-chapter-manager.hpp"
 #include "version.h"
 #include <obs-data.h>
@@ -8,7 +9,7 @@
 #include <QApplication>
 #include <QCheckBox>
 #include <QComboBox>
-#include <qdesktopservices.h>
+#include <QDesktopServices>
 #include <QDialogButtonBox>
 #include <QDir>
 #include <QDockWidget>
@@ -43,7 +44,7 @@ ChapterMarkerDock::ChapterMarkerDock(QWidget *parent)
 	  chapterOnSceneChangeEnabled(false),
 	  showPreviousChaptersEnabled(false),
 	  addChapterSourceEnabled(false),
-	  chapterCount(1),
+	  chapterCount(Constants::DEFAULT_CHAPTER_COUNT),
 	  settingsDialog(nullptr),
 	  isFirstRunInRecording(true),
 	  presetChapters(),
@@ -131,7 +132,7 @@ void ChapterMarkerDock::setupConnections()
 	connect(previousChaptersList, &QListWidget::itemDoubleClicked, this, &ChapterMarkerDock::onPreviousChapterDoubleClicked);
 
 	// Feedback label timer
-	feedbackTimer.setInterval(5000);
+	feedbackTimer.setInterval(Constants::FEEDBACK_TIMER_INTERVAL);
 	feedbackTimer.setSingleShot(true);
 	connect(&feedbackTimer, &QTimer::timeout, [this]() { feedbackLabel->setText(""); });
 }
@@ -205,11 +206,11 @@ void ChapterMarkerDock::setupMainDockSaveButtonLayout(QVBoxLayout *mainLayout)
 	settingsButton->setToolTip(obs_module_text("SettingsTooltip"));
 	applyThemeIDToButton(settingsButton, "configIconSmall");
 
-	// Configure the annotation button using the applyThemeIDToButton function
+	// Configure the annotation button
 	annotationButton->setIcon(QIcon(":images/annotation-icon.svg"));
-	annotationButton->setMinimumSize(32, 24);
-	annotationButton->setMaximumSize(32, 24);
-	annotationButton->setIconSize(QSize(20, 20));
+	annotationButton->setMinimumSize(Constants::BUTTON_MIN_WIDTH, Constants::BUTTON_MIN_HEIGHT);
+	annotationButton->setMaximumSize(Constants::BUTTON_MAX_WIDTH, Constants::BUTTON_MAX_HEIGHT);
+	annotationButton->setIconSize(QSize(Constants::BUTTON_ICON_SIZE, Constants::BUTTON_ICON_SIZE));
 	annotationButton->setToolTip(obs_module_text("AnnotationButtonTooltip"));
 
 	// Add the Save Chapter Marker button and a stretch to push the settings button to the right
@@ -310,7 +311,7 @@ void ChapterMarkerDock::onRecordingStopped()
 	blog(LOG_INFO, "[StreamUP Record Chapter Manager] chapterCount: %d", chapterCount);
 
 	incompatibleFileTypeMessageShown = false;
-	chapterCount = 1; // Reset chapter count to 1
+	chapterCount = Constants::DEFAULT_CHAPTER_COUNT; // Reset chapter count
 }
 
 void ChapterMarkerDock::onPreviousChapterSelected()
@@ -548,8 +549,8 @@ void ChapterMarkerDock::setupSettingsExportGroup(QVBoxLayout *mainLayout)
 	textCheckboxLayout = new QHBoxLayout;
 	xmlCheckboxLayout = new QHBoxLayout;
 	// Add a spacer to the layouts to create the indent
-	textCheckboxLayout->addSpacing(20);
-	xmlCheckboxLayout->addSpacing(20);
+	textCheckboxLayout->addSpacing(Constants::INDENT_SPACING);
+	xmlCheckboxLayout->addSpacing(Constants::INDENT_SPACING);
 	// Add the checkboxes to the layouts
 	textCheckboxLayout->addWidget(exportChaptersToTextCheckbox);
 	xmlCheckboxLayout->addWidget(exportChaptersToXMLCheckbox);
@@ -935,7 +936,7 @@ void ChapterMarkerDock::createExportFiles()
 	QString directoryPath = fileInfo.absolutePath();
 
 	if (exportChaptersToTextEnabled) {
-		QString chapterFilePath = directoryPath + "/" + baseName + "_chapters.txt";
+		const QString chapterFilePath = directoryPath + "/" + baseName + Constants::TEXT_FILE_SUFFIX;
 		QFile file(chapterFilePath);
 		if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
 			QTextStream out(&file);
@@ -950,7 +951,7 @@ void ChapterMarkerDock::createExportFiles()
 	}
 
 	if (exportChaptersToXMLEnabled) {
-		QString xmlFilePath = directoryPath + "/" + baseName + "_chapters.xml";
+		const QString xmlFilePath = directoryPath + "/" + baseName + Constants::XML_FILE_SUFFIX;
 		QFile xmlFile(xmlFilePath);
 		if (xmlFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
 			QTextStream out(&xmlFile);
@@ -1177,8 +1178,8 @@ void ChapterMarkerDock::addChapterMarker(const QString &chapterName, const QStri
 		auto ph = obs_get_proc_handler();
 		calldata cd;
 		calldata_init(&cd);
-		calldata_set_string(&cd, "chapter_name", QT_TO_UTF8(fullChapterName));
-		proc_handler_call(ph, "aitum_vertical_add_chapter", &cd);
+		calldata_set_string(&cd, Constants::AITUM_VERTICAL_PARAM, QT_TO_UTF8(fullChapterName));
+		proc_handler_call(ph, Constants::AITUM_VERTICAL_PROC, &cd);
 		calldata_free(&cd);
 	} // Log and handle the result of adding the chapter marker
 	QString timestamp = getCurrentRecordingTime();
@@ -1235,10 +1236,14 @@ void ChapterMarkerDock::onAddAnnotation(const QString &annotationText, const QSt
 //--------------------UTILITY FUNCTIONS--------------------
 void ChapterMarkerDock::applyThemeIDToButton(QPushButton *button, const QString &themeID)
 {
+	if (!button) {
+		return;
+	}
+
 	button->setProperty("themeID", themeID);
-	button->setMinimumSize(32, 24);
-	button->setMaximumSize(32, 24);
-	button->setIconSize(QSize(20, 20));
+	button->setMinimumSize(Constants::BUTTON_MIN_WIDTH, Constants::BUTTON_MIN_HEIGHT);
+	button->setMaximumSize(Constants::BUTTON_MAX_WIDTH, Constants::BUTTON_MAX_HEIGHT);
+	button->setIconSize(QSize(Constants::BUTTON_ICON_SIZE, Constants::BUTTON_ICON_SIZE));
 	button->style()->unpolish(button);
 	button->style()->polish(button);
 }
@@ -1252,22 +1257,24 @@ QString ChapterMarkerDock::getCurrentRecordingTime() const
 {
 	obs_output_t *output = obs_frontend_get_recording_output();
 	if (!output) {
-		return QString("00:00:00");
+		return QString(Constants::DEFAULT_TIMESTAMP);
 	}
 
-	uint64_t totalFrames = obs_output_get_total_frames(output);
+	const uint64_t totalFrames = obs_output_get_total_frames(output);
 	obs_video_info ovi;
-	QString recordingTimeString = "00:00:00";
+	QString recordingTimeString = Constants::DEFAULT_TIMESTAMP;
 
-	if (obs_get_video_info(&ovi) != 0) {
-		double frameRate = static_cast<double>(ovi.fps_num) / ovi.fps_den;
-		uint64_t totalSeconds = static_cast<uint64_t>(totalFrames / frameRate);
-		QTime recordingTime(0, 0, 0);
-		recordingTime = recordingTime.addSecs(totalSeconds);
-		recordingTimeString = recordingTime.toString("HH:mm:ss");
+	if (obs_get_video_info(&ovi)) {
+		const double frameRate = static_cast<double>(ovi.fps_num) / ovi.fps_den;
+		if (frameRate > 0.0) {
+			const uint64_t totalSeconds = static_cast<uint64_t>(totalFrames / frameRate);
+			QTime recordingTime(0, 0, 0);
+			recordingTime = recordingTime.addSecs(totalSeconds);
+			recordingTimeString = recordingTime.toString("HH:mm:ss");
+		}
 	}
 
-	obs_output_release(output); // Ensure this is always called before returning
+	obs_output_release(output);
 
 	return recordingTimeString;
 }
