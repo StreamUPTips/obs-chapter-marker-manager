@@ -49,6 +49,7 @@ ChapterMarkerDock::ChapterMarkerDock(QWidget *parent)
 	  ignoredScenes(),
 	  chapterOnSceneChangeEnabled(false),
 	  showPreviousChaptersEnabled(false),
+	  fullChapterHistoryEnabled(false),
 	  addChapterSourceEnabled(false),
 	  chapterCount(Constants::DEFAULT_CHAPTER_COUNT),
 	  settingsDialog(nullptr),
@@ -83,6 +84,7 @@ ChapterMarkerDock::ChapterMarkerDock(QWidget *parent)
 	  saveChapterMarkerButton(new QPushButton(obs_module_text("SaveChapterMarkerButton"), this)),
 	  defaultChapterNameEdit(nullptr),
 	  showPreviousChaptersCheckbox(nullptr),
+	  fullChapterHistoryCheckbox(nullptr),
 	  addChapterSourceCheckbox(nullptr),
 	  chapterOnSceneChangeCheckbox(nullptr),
 	  ignoredScenesListWidget(nullptr),
@@ -542,6 +544,11 @@ void ChapterMarkerDock::setupSettingsGeneralGroup(QVBoxLayout *mainLayout)
 	showPreviousChaptersCheckbox->setToolTip(obs_module_text("PreviousChaptersTooltip"));
 	generalSettingsLayout->addWidget(showPreviousChaptersCheckbox);
 	showPreviousChaptersCheckbox->setChecked(showPreviousChaptersEnabled);
+
+	fullChapterHistoryCheckbox = new QCheckBox(obs_module_text("GeneralSettingsFullChapterHistory"), generalSettingsGroup);
+	fullChapterHistoryCheckbox->setToolTip(obs_module_text("FullChapterHistoryTooltip"));
+	generalSettingsLayout->addWidget(fullChapterHistoryCheckbox);
+	fullChapterHistoryCheckbox->setChecked(fullChapterHistoryEnabled);
 
 	addChapterSourceCheckbox = new QCheckBox(obs_module_text("GeneralSettingsAddChapterSource"), generalSettingsGroup);
 	addChapterSourceCheckbox->setToolTip(obs_module_text("GeneralSettingsAddChapterSourceTooltip"));
@@ -1568,11 +1575,16 @@ void ChapterMarkerDock::addChapterMarker(const QString &chapterName, const QStri
 	currentChapterName = fullChapterName;
 
 	// Move the chapter to the top of the previous chapters list
-	QList<QListWidgetItem *> items = previousChaptersList->findItems(fullChapterName, Qt::MatchExactly);
+	QString displayText = fullChapterName;
+	if (fullChapterHistoryEnabled) {
+		displayText = timestamp + " - " + fullChapterName;
+	}
+
+	QList<QListWidgetItem *> items = previousChaptersList->findItems(displayText, Qt::MatchExactly);
 	if (!items.isEmpty()) {
 		delete previousChaptersList->takeItem(previousChaptersList->row(items.first()));
 	}
-	previousChaptersList->insertItem(0, fullChapterName);
+	previousChaptersList->insertItem(0, displayText);
 
 	chapters.insert(0, chapterName);
 	timestamps.insert(0, timestamp);
@@ -1623,7 +1635,7 @@ void ChapterMarkerDock::resetRecordingStartFrameCount()
 	// Store the current frame count when recording starts
 	// This allows us to calculate timestamps relative to the recording start
 	recordingStartFrameCount = obs_get_total_frames();
-	blog(LOG_INFO, "[StreamUP Record Chapter Manager] Recording started at frame: %llu", recordingStartFrameCount);
+	blog(LOG_INFO, "[StreamUP Record Chapter Manager] Recording started at frame: %llu", (unsigned long long)recordingStartFrameCount);
 }
 
 QString ChapterMarkerDock::getCurrentRecordingTime() const
@@ -1664,6 +1676,7 @@ void ChapterMarkerDock::LoadSettings(obs_data_t *settings)
 
 	// Previous chapters
 	showPreviousChaptersEnabled = obs_data_get_bool(settings, "showPreviousChaptersEnabled");
+	fullChapterHistoryEnabled = obs_data_get_bool(settings, "fullChapterHistoryEnabled");
 
 	// Write to files
 	exportChaptersToFileEnabled = obs_data_get_bool(settings, "exportChaptersToFileEnabled");
@@ -1710,6 +1723,7 @@ void ChapterMarkerDock::SaveSettings()
 
 	// Previous chapters
 	obs_data_set_bool(settings, "showPreviousChaptersEnabled", showPreviousChaptersCheckbox->isChecked());
+	obs_data_set_bool(settings, "fullChapterHistoryEnabled", fullChapterHistoryCheckbox->isChecked());
 
 	// Write to files
 	obs_data_set_bool(settings, "exportChaptersToFileEnabled", exportChaptersToFileCheckbox->isChecked());

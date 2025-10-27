@@ -65,6 +65,7 @@ public:
 	QStringList ignoredScenes;
 	bool chapterOnSceneChangeEnabled;
 	bool showPreviousChaptersEnabled;
+	bool fullChapterHistoryEnabled;
 	bool addChapterSourceEnabled;
 	int chapterCount;
 	bool useIncrementalChapterNames;
@@ -162,6 +163,7 @@ private:
 
 	QLineEdit *defaultChapterNameEdit;
 	QCheckBox *showPreviousChaptersCheckbox;
+	QCheckBox *fullChapterHistoryCheckbox;
 	QCheckBox *addChapterSourceCheckbox;
 	QCheckBox *chapterOnSceneChangeCheckbox;
 	QListWidget *ignoredScenesListWidget;
