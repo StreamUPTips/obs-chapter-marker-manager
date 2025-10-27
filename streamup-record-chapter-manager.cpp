@@ -1,20 +1,21 @@
 #include "streamup-record-chapter-manager.hpp"
 #include "annotation-dock.hpp"
 #include "chapter-marker-dock.hpp"
+#include "constants.hpp"
+#include "obs-websocket-api.h"
 #include "version.h"
-#include <obs.h>
 #include <obs-data.h>
 #include <obs-encoder.h>
 #include <obs-frontend-api.h>
 #include <obs-module.h>
-#include <QMainWindow>
+#include <obs.h>
+#include <util/platform.h>
+#include <QDir>
 #include <QDockWidget>
 #include <QFile>
-#include <QDir>
-#include <QTextStream>
 #include <QFileInfo>
-#include <util/platform.h>
-#include "obs-websocket-api.h"
+#include <QMainWindow>
+#include <QTextStream>
 
 #define QT_UTF8(str) QString::fromUtf8(str)
 #define QT_TO_UTF8(str) str.toUtf8().constData()
@@ -27,19 +28,24 @@ static ChapterMarkerDock *chapterMarkerDock = nullptr;
 
 static void LoadChapterMarkerDock()
 {
-	const auto main_window = static_cast<QMainWindow *>(obs_frontend_get_main_window());
+	if (chapterMarkerDock) {
+		return; // Already loaded
+	}
+
+	auto *main_window = static_cast<QMainWindow *>(obs_frontend_get_main_window());
+	if (!main_window) {
+		blog(LOG_ERROR, "[StreamUP Record Chapter Manager] Failed to get main window");
+		return;
+	}
+
 	obs_frontend_push_ui_translation(obs_module_get_string);
 
-	if (!chapterMarkerDock) {
-		chapterMarkerDock = new ChapterMarkerDock(main_window);
+	chapterMarkerDock = new ChapterMarkerDock(main_window);
+	const QString title = QString::fromUtf8(obs_module_text("StreamUPChapterMarkerManager"));
 
-		const QString title = QString::fromUtf8(obs_module_text("StreamUPChapterMarkerManager"));
-		const auto name = "ChapterMarkerDock";
+	obs_frontend_add_dock_by_id(Constants::CHAPTER_MARKER_DOCK_ID, QT_TO_UTF8(title), chapterMarkerDock);
 
-		obs_frontend_add_dock_by_id(name, QT_TO_UTF8(title), chapterMarkerDock);
-
-		obs_frontend_pop_ui_translation();
-	}
+	obs_frontend_pop_ui_translation();
 }
 
 static void OnStartRecording()
@@ -65,6 +71,7 @@ static void FrontEndEventHandler(enum obs_frontend_event event, void *)
 	case OBS_FRONTEND_EVENT_RECORDING_STARTED:
 		if (chapterMarkerDock) {
 			chapterMarkerDock->isFirstRunInRecording = true;
+			chapterMarkerDock->resetRecordingStartFrameCount(); // Reset frame count to start at 00:00:00
 			chapterMarkerDock->updateCurrentChapterLabel(obs_module_text("Start"));
 			OnStartRecording();
 		}
@@ -140,7 +147,7 @@ void WebsocketRequestGetCurrentChapterMarker(obs_data_t *request_data, obs_data_
 {
 	UNUSED_PARAMETER(request_data);
 
-	QString currentChapterName = GetCurrentChapterName();
+	const QString currentChapterName = GetCurrentChapterName();
 
 	if (!currentChapterName.isEmpty()) {
 		obs_data_set_string(response_data, "chapterName", QT_TO_UTF8(currentChapterName));
@@ -151,11 +158,11 @@ void WebsocketRequestGetCurrentChapterMarker(obs_data_t *request_data, obs_data_
 		if (output) {
 			obs_data_set_string(response_data, "chapterName", obs_module_text("RecordingNotActive"));
 			obs_data_set_bool(response_data, "success", false);
+			obs_output_release(output);
 		} else {
 			obs_data_set_string(response_data, "chapterName", obs_module_text("ErrorGettingChapterName"));
 			obs_data_set_bool(response_data, "success", false);
 		}
-		obs_output_release(output);
 	}
 }
 
@@ -301,7 +308,12 @@ void AddChapterMarkerHotkey(void *data, obs_hotkey_id id, obs_hotkey_t *hotkey, 
 //--------------------MENU HELPERS--------------------
 obs_data_t *SaveLoadSettingsCallback(obs_data_t *save_data, bool saving)
 {
-	char *configPath = obs_module_config_path("configs.json");
+	char *configPath = obs_module_config_path(Constants::CONFIG_FILE_NAME);
+	if (!configPath) {
+		blog(LOG_ERROR, "[StreamUP Record Chapter Manager] Failed to get config path");
+		return nullptr;
+	}
+
 	obs_data_t *data = nullptr;
 
 	if (saving) {
@@ -317,11 +329,13 @@ obs_data_t *SaveLoadSettingsCallback(obs_data_t *save_data, bool saving)
 			blog(LOG_INFO, "[StreamUP Record Chapter Manager] Settings not found. Creating default settings...");
 
 			char *dirPath = obs_module_config_path("");
-			os_mkdirs(dirPath);
-			bfree(dirPath);
+			if (dirPath) {
+				os_mkdirs(dirPath);
+				bfree(dirPath);
+			}
 
 			data = obs_data_create();
-			obs_data_set_string(data, "defaultChapterName", "Chapter");
+			obs_data_set_string(data, "defaultChapterName", Constants::DEFAULT_CHAPTER_NAME);
 
 			if (obs_data_save_json(data, configPath)) {
 				blog(LOG_INFO, "[StreamUP Record Chapter Manager] Default settings saved to %s", configPath);
@@ -343,22 +357,27 @@ obs_data_t *SaveLoadSettingsCallback(obs_data_t *save_data, bool saving)
 //--------------------STARTUP COMMANDS--------------------
 static void RegisterHotkeys()
 {
-	addDefaultChapterMarkerHotkey = obs_hotkey_register_frontend("addDefaultChapterMarker",
+	addDefaultChapterMarkerHotkey = obs_hotkey_register_frontend(Constants::HOTKEY_ADD_DEFAULT_CHAPTER,
 								     obs_module_text("HotkeyAddDefaultChapterMarker"),
 								     AddDefaultChapterMarkerHotkey, chapterMarkerDock);
 }
 
 static void RegisterWebsocketRequests()
 {
-	vendor = obs_websocket_register_vendor("streamup-chapter-manager");
-	if (!vendor)
+	vendor = obs_websocket_register_vendor(Constants::VENDOR_NAME);
+	if (!vendor) {
+		blog(LOG_WARNING, "[StreamUP Record Chapter Manager] Failed to register WebSocket vendor");
 		return;
+	}
 
-	obs_websocket_vendor_register_request(vendor, "setChapterMarker", WebsocketRequestSetChapterMarker, nullptr);
+	obs_websocket_vendor_register_request(vendor, Constants::WS_REQUEST_SET_CHAPTER, WebsocketRequestSetChapterMarker,
+					      nullptr);
 
-	obs_websocket_vendor_register_request(vendor, "getCurrentChapterMarker", WebsocketRequestGetCurrentChapterMarker, nullptr);
+	obs_websocket_vendor_register_request(vendor, Constants::WS_REQUEST_GET_CHAPTER,
+					      WebsocketRequestGetCurrentChapterMarker, nullptr);
 
-	obs_websocket_vendor_register_request(vendor, "setAnnotation", WebsocketRequestSetAnnotation, nullptr);
+	obs_websocket_vendor_register_request(vendor, Constants::WS_REQUEST_SET_ANNOTATION, WebsocketRequestSetAnnotation,
+					      nullptr);
 }
 
 bool (*obs_frontend_recording_add_chapter_wrapper)(const char *name) = nullptr;

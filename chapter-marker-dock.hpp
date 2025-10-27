@@ -30,8 +30,12 @@ public:
 
 	QString getChapterName() const;
 	void setExportTextFilePath(const QString &filePath);
-	void setExportXMLFilePath(const QString &filePath);
-	void writeChapterToXMLFile(const QString &chapterName, const QString &timestamp, const QString &chapterSource);
+	void setExportFCPXMLFilePath(const QString &filePath);
+	void setExportPremiereXMLFilePath(const QString &filePath);
+	void writeChapterToFCPXMLFile(const QString &chapterName, const QString &timestamp, const QString &chapterSource);
+	void writeChapterToPremiereXMLFile(const QString &chapterName, const QString &timestamp, const QString &chapterSource);
+	void closeFCPXMLFile();
+	void closePremiereXMLFile();
 
 	QString getDefaultChapterName() const { return defaultChapterName; }
 
@@ -41,17 +45,27 @@ public:
 	void showFeedbackMessage(const QString &message, bool isError);
 	void clearPreviousChaptersGroup();
 	void writeChapterToTextFile(const QString &chapterName, const QString &timestamp, const QString &chapterSource);
+	void writeChapterToEDLFile(const QString &chapterName, const QString &timestamp, const QString &chapterSource);
+	void setExportEDLFilePath(const QString &filePath);
+	QString convertTimestampToTimecode(const QString &timestamp, int frameNumber) const;
 	void addChapterMarker(const QString &chapterName, const QString &chapterSource);
 	bool exportChaptersToTextEnabled;
-	bool exportChaptersToXMLEnabled;
+	bool exportChaptersToFCPXMLEnabled;
+	bool exportChaptersToPremiereXMLEnabled;
+	bool exportChaptersToEDLEnabled;
 	bool exportChaptersToFileEnabled;
 	bool insertChapterMarkersInVideoEnabled;
 	QString exportTextFilePath;
-	QString exportXMLFilePath;
+	QString exportFCPXMLFilePath;
+	QString exportPremiereXMLFilePath;
+	QString exportEDLFilePath;
 	QString defaultChapterName;
+	int edlEventNumber;
+	int fcpMarkerID;
 	QStringList ignoredScenes;
 	bool chapterOnSceneChangeEnabled;
 	bool showPreviousChaptersEnabled;
+	bool fullChapterHistoryEnabled;
 	bool addChapterSourceEnabled;
 	int chapterCount;
 	bool useIncrementalChapterNames;
@@ -70,6 +84,8 @@ public:
 	QMap<QString, obs_hotkey_id> chapterHotkeys;
 	void onAddChapterMarker(const QString &chapterName, const QString &chapterSource);
 	void onAddAnnotation(const QString &annotationText, const QString &annotationSource);
+	void resetRecordingStartFrameCount(); // Reset the frame count when recording starts
+	uint64_t recordingStartFrameCount; // Track the frame count when recording started
 
 signals:
 	void addChapterMarkerSignal(const QString &chapterName, const QString &chapterSource);
@@ -113,7 +129,9 @@ private:
 	void populateIgnoredScenesListWidget();
 	QCheckBox *exportChaptersToFileCheckbox;
 	QCheckBox *exportChaptersToTextCheckbox;
-	QCheckBox *exportChaptersToXMLCheckbox;
+	QCheckBox *exportChaptersToFCPXMLCheckbox;
+	QCheckBox *exportChaptersToPremiereXMLCheckbox;
+	QCheckBox *exportChaptersToEDLCheckbox;
 	QGroupBox *exportSettingsGroup;
 	QCheckBox *insertChapterMarkersCheckbox;
 	void setupSettingsExportGroup(QVBoxLayout *mainLayout);
@@ -145,6 +163,7 @@ private:
 
 	QLineEdit *defaultChapterNameEdit;
 	QCheckBox *showPreviousChaptersCheckbox;
+	QCheckBox *fullChapterHistoryCheckbox;
 	QCheckBox *addChapterSourceCheckbox;
 	QCheckBox *chapterOnSceneChangeCheckbox;
 	QListWidget *ignoredScenesListWidget;
@@ -154,7 +173,9 @@ private:
 	QStringList timestamps;
 
 	QHBoxLayout *textCheckboxLayout;
-	QHBoxLayout *xmlCheckboxLayout;
+	QHBoxLayout *fcpXmlCheckboxLayout;
+	QHBoxLayout *premiereXmlCheckboxLayout;
+	QHBoxLayout *edlCheckboxLayout;
 	QVBoxLayout *exportSettingsLayout;
 	bool incompatibleFileTypeMessageShown = false;
 };
