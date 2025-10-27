@@ -47,6 +47,7 @@ ChapterMarkerDock::ChapterMarkerDock(QWidget *parent)
 	  chapterCount(Constants::DEFAULT_CHAPTER_COUNT),
 	  settingsDialog(nullptr),
 	  isFirstRunInRecording(true),
+	  recordingStartFrameCount(0),
 	  presetChapters(),
 	  chapterHotkeys(),
 	  presetChaptersDialog(nullptr),
@@ -1259,28 +1260,36 @@ QString ChapterMarkerDock::getChapterName() const
 	return chapterNameInput->text();
 }
 
+void ChapterMarkerDock::resetRecordingStartFrameCount()
+{
+	// Store the current frame count when recording starts
+	// This allows us to calculate timestamps relative to the recording start
+	recordingStartFrameCount = obs_get_total_frames();
+	blog(LOG_INFO, "[StreamUP Record Chapter Manager] Recording started at frame: %llu", recordingStartFrameCount);
+}
+
 QString ChapterMarkerDock::getCurrentRecordingTime() const
 {
-	obs_output_t *output = obs_frontend_get_recording_output();
-	if (!output) {
-		return QString(Constants::DEFAULT_TIMESTAMP);
-	}
+	// Use obs_get_total_frames() to get the live capture frame count
+	// instead of obs_output_get_total_frames() which returns the encoder's
+	// output frame count (which lags 1-2 seconds behind due to buffering)
+	const uint64_t currentFrames = obs_get_total_frames();
 
-	const uint64_t totalFrames = obs_output_get_total_frames(output);
+	// Calculate frames elapsed since recording started
+	const uint64_t framesElapsed = currentFrames - recordingStartFrameCount;
+
 	obs_video_info ovi;
 	QString recordingTimeString = Constants::DEFAULT_TIMESTAMP;
 
 	if (obs_get_video_info(&ovi)) {
 		const double frameRate = static_cast<double>(ovi.fps_num) / ovi.fps_den;
 		if (frameRate > 0.0) {
-			const uint64_t totalSeconds = static_cast<uint64_t>(totalFrames / frameRate);
+			const uint64_t totalSeconds = static_cast<uint64_t>(framesElapsed / frameRate);
 			QTime recordingTime(0, 0, 0);
 			recordingTime = recordingTime.addSecs(totalSeconds);
 			recordingTimeString = recordingTime.toString("HH:mm:ss");
 		}
 	}
-
-	obs_output_release(output);
 
 	return recordingTimeString;
 }

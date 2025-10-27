@@ -71,6 +71,7 @@ static void FrontEndEventHandler(enum obs_frontend_event event, void *)
 	case OBS_FRONTEND_EVENT_RECORDING_STARTED:
 		if (chapterMarkerDock) {
 			chapterMarkerDock->isFirstRunInRecording = true;
+			chapterMarkerDock->resetRecordingStartFrameCount(); // Reset frame count to start at 00:00:00
 			chapterMarkerDock->updateCurrentChapterLabel(obs_module_text("Start"));
 			OnStartRecording();
 		}

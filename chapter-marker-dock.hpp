@@ -70,6 +70,8 @@ public:
 	QMap<QString, obs_hotkey_id> chapterHotkeys;
 	void onAddChapterMarker(const QString &chapterName, const QString &chapterSource);
 	void onAddAnnotation(const QString &annotationText, const QString &annotationSource);
+	void resetRecordingStartFrameCount(); // Reset the frame count when recording starts
+	uint64_t recordingStartFrameCount; // Track the frame count when recording started
 
 signals:
 	void addChapterMarkerSignal(const QString &chapterName, const QString &chapterSource);
