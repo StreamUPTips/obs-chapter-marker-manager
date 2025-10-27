@@ -35,11 +35,14 @@ ChapterMarkerDock::ChapterMarkerDock(QWidget *parent)
 	  annotationDock(nullptr),
 	  exportChaptersToTextEnabled(false),
 	  exportChaptersToXMLEnabled(false),
+	  exportChaptersToEDLEnabled(false),
 	  exportChaptersToFileEnabled(false),
 	  insertChapterMarkersInVideoEnabled(false),
 	  exportTextFilePath(""),
 	  exportXMLFilePath(""),
+	  exportEDLFilePath(""),
 	  defaultChapterName(obs_module_text("DefaultChapterName")),
+	  edlEventNumber(1),
 	  ignoredScenes(),
 	  chapterOnSceneChangeEnabled(false),
 	  showPreviousChaptersEnabled(false),
@@ -58,6 +61,7 @@ ChapterMarkerDock::ChapterMarkerDock(QWidget *parent)
 	  exportChaptersToFileCheckbox(nullptr),
 	  exportChaptersToTextCheckbox(nullptr),
 	  exportChaptersToXMLCheckbox(nullptr),
+	  exportChaptersToEDLCheckbox(nullptr),
 	  exportSettingsGroup(nullptr),
 	  insertChapterMarkersCheckbox(nullptr),
 	  ignoredScenesDialog(nullptr),
@@ -83,6 +87,7 @@ ChapterMarkerDock::ChapterMarkerDock(QWidget *parent)
 	  timestamps(),
 	  textCheckboxLayout(nullptr),
 	  xmlCheckboxLayout(nullptr),
+	  edlCheckboxLayout(nullptr),
 	  exportSettingsLayout(nullptr)
 {
 	// UI Setup
@@ -319,6 +324,7 @@ void ChapterMarkerDock::onRecordingStopped()
 
 	incompatibleFileTypeMessageShown = false;
 	chapterCount = Constants::DEFAULT_CHAPTER_COUNT; // Reset chapter count
+	edlEventNumber = 1; // Reset EDL event number for next recording
 }
 
 void ChapterMarkerDock::onPreviousChapterSelected()
@@ -541,13 +547,17 @@ void ChapterMarkerDock::setupSettingsExportGroup(QVBoxLayout *mainLayout)
 	exportChaptersToTextCheckbox->setToolTip(obs_module_text("ExportSettingsExportToTextTooltip"));
 	exportChaptersToXMLCheckbox = new QCheckBox(obs_module_text("ExportSettingsExportToXml"), exportSettingsGroup);
 	exportChaptersToXMLCheckbox->setToolTip(obs_module_text("ExportSettingsExportToXmlTooltip"));
+	exportChaptersToEDLCheckbox = new QCheckBox(obs_module_text("ExportSettingsExportToEDL"), exportSettingsGroup);
+	exportChaptersToEDLCheckbox->setToolTip(obs_module_text("ExportSettingsExportToEDLTooltip"));
 
 	// Set check boxes visually
 	exportChaptersToFileCheckbox->setChecked(exportChaptersToFileEnabled);
 	exportChaptersToTextCheckbox->setChecked(exportChaptersToTextEnabled);
 	exportChaptersToXMLCheckbox->setChecked(exportChaptersToXMLEnabled);
+	exportChaptersToEDLCheckbox->setChecked(exportChaptersToEDLEnabled);
 	exportChaptersToTextCheckbox->setVisible(exportChaptersToFileEnabled);
 	exportChaptersToXMLCheckbox->setVisible(exportChaptersToFileEnabled);
+	exportChaptersToEDLCheckbox->setVisible(exportChaptersToFileEnabled);
 
 	connect(exportChaptersToFileCheckbox, &QCheckBox::toggled, this, &ChapterMarkerDock::onExportChaptersToFileToggled);
 
@@ -555,20 +565,25 @@ void ChapterMarkerDock::setupSettingsExportGroup(QVBoxLayout *mainLayout)
 
 	textCheckboxLayout = new QHBoxLayout;
 	xmlCheckboxLayout = new QHBoxLayout;
+	edlCheckboxLayout = new QHBoxLayout;
 	// Add a spacer to the layouts to create the indent
 	textCheckboxLayout->addSpacing(Constants::INDENT_SPACING);
 	xmlCheckboxLayout->addSpacing(Constants::INDENT_SPACING);
+	edlCheckboxLayout->addSpacing(Constants::INDENT_SPACING);
 	// Add the checkboxes to the layouts
 	textCheckboxLayout->addWidget(exportChaptersToTextCheckbox);
 	xmlCheckboxLayout->addWidget(exportChaptersToXMLCheckbox);
+	edlCheckboxLayout->addWidget(exportChaptersToEDLCheckbox);
 
 	// Add the QHBoxLayouts to the main layout
 	if (!exportChaptersToFileEnabled) {
 		exportSettingsLayout->removeItem(textCheckboxLayout);
 		exportSettingsLayout->removeItem(xmlCheckboxLayout);
+		exportSettingsLayout->removeItem(edlCheckboxLayout);
 	} else {
 		exportSettingsLayout->addLayout(textCheckboxLayout);
 		exportSettingsLayout->addLayout(xmlCheckboxLayout);
+		exportSettingsLayout->addLayout(edlCheckboxLayout);
 	}
 
 	exportSettingsGroup->setLayout(exportSettingsLayout);
@@ -629,13 +644,16 @@ void ChapterMarkerDock::onExportChaptersToFileToggled(bool checked)
 	exportChaptersToFileEnabled = checked;
 	exportChaptersToTextCheckbox->setVisible(checked);
 	exportChaptersToXMLCheckbox->setVisible(checked);
+	exportChaptersToEDLCheckbox->setVisible(checked);
 
 	if (!checked) {
 		exportSettingsLayout->removeItem(textCheckboxLayout);
 		exportSettingsLayout->removeItem(xmlCheckboxLayout);
+		exportSettingsLayout->removeItem(edlCheckboxLayout);
 	} else {
 		exportSettingsLayout->addLayout(textCheckboxLayout);
 		exportSettingsLayout->addLayout(xmlCheckboxLayout);
+		exportSettingsLayout->addLayout(edlCheckboxLayout);
 	}
 
 	QSize size = exportSettingsGroup->sizeHint();
@@ -973,6 +991,22 @@ void ChapterMarkerDock::createExportFiles()
 			     QT_TO_UTF8(xmlFilePath));
 		}
 	}
+
+	if (exportChaptersToEDLEnabled) {
+		const QString edlFilePath = directoryPath + "/" + baseName + Constants::EDL_FILE_SUFFIX;
+		QFile edlFile(edlFilePath);
+		if (edlFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
+			QTextStream out(&edlFile);
+			out << "TITLE: " << baseName << "\n";
+			out << "FCM: NON-DROP FRAME\n\n";
+			edlFile.close();
+			blog(LOG_INFO, "[StreamUP Record Chapter Manager] Created EDL chapter file: %s", QT_TO_UTF8(edlFilePath));
+			setExportEDLFilePath(edlFilePath);
+		} else {
+			blog(LOG_ERROR, "[StreamUP Record Chapter Manager] Failed to create EDL chapter file: %s",
+			     QT_TO_UTF8(edlFilePath));
+		}
+	}
 }
 
 void ChapterMarkerDock::setExportTextFilePath(const QString &filePath)
@@ -1010,6 +1044,36 @@ void ChapterMarkerDock::setExportXMLFilePath(const QString &filePath)
 	exportXMLFilePath = filePath;
 }
 
+void ChapterMarkerDock::setExportEDLFilePath(const QString &filePath)
+{
+	exportEDLFilePath = filePath;
+}
+
+QString ChapterMarkerDock::convertTimestampToTimecode(const QString &timestamp, int frameNumber) const
+{
+	// Convert HH:MM:SS timestamp to HH:MM:SS:FF timecode format
+	// Parse the timestamp
+	QTime time = QTime::fromString(timestamp, "HH:mm:ss");
+	if (!time.isValid()) {
+		return "01:00:00:00"; // Default fallback
+	}
+
+	// Get frame rate from OBS
+	obs_video_info ovi;
+	int fps = 30; // Default fallback
+	if (obs_get_video_info(&ovi)) {
+		fps = static_cast<int>(round(static_cast<double>(ovi.fps_num) / ovi.fps_den));
+	}
+
+	// Format: HH:MM:SS:FF where FF is frame number (00-29 for 30fps)
+	// For markers, we use frame 00 for start and 01 for end (1 frame duration)
+	return QString("%1:%2:%3:%4")
+		.arg(time.hour() + 1, 2, 10, QChar('0'))  // Add 1 hour offset like in the example
+		.arg(time.minute(), 2, 10, QChar('0'))
+		.arg(time.second(), 2, 10, QChar('0'))
+		.arg(frameNumber, 2, 10, QChar('0'));
+}
+
 void ChapterMarkerDock::writeChapterToXMLFile(const QString &chapterName, const QString &timestamp, const QString &chapterSource)
 {
 	if (!exportChaptersToFileEnabled || !exportChaptersToXMLEnabled) {
@@ -1035,6 +1099,65 @@ void ChapterMarkerDock::writeChapterToXMLFile(const QString &chapterName, const 
 	out << "    <Source>" << chapterSource << "</Source>\n";
 	out << "  </Chapter>\n";
 	file.close();
+}
+
+void ChapterMarkerDock::writeChapterToEDLFile(const QString &chapterName, const QString &timestamp, const QString &chapterSource)
+{
+	if (!exportChaptersToFileEnabled || !exportChaptersToEDLEnabled) {
+		return;
+	}
+
+	if (exportEDLFilePath.isEmpty()) {
+		blog(LOG_ERROR, "[StreamUP Record Chapter Manager] EDL file path is not set, creating a new file.");
+		createExportFiles();
+		return;
+	}
+
+	QFile file(exportEDLFilePath);
+	if (!file.open(QIODevice::Append | QIODevice::Text)) {
+		blog(LOG_ERROR, "[StreamUP Record Chapter Manager] Failed to open EDL file: %s", QT_TO_UTF8(exportEDLFilePath));
+		return;
+	}
+
+	// Convert timestamp to timecode format (HH:MM:SS:FF)
+	QString timecodeStart = convertTimestampToTimecode(timestamp, 0);
+	QString timecodeEnd = convertTimestampToTimecode(timestamp, 1);
+
+	// EDL format:
+	// Event#  Reel   Track  Type  Source In  Source Out  Record In  Record Out
+	// Comment line with marker info
+	QTextStream out(&file);
+
+	// Write event line
+	out << QString("%1  001      V     C        %2 %3 %4 %5  \n")
+		.arg(edlEventNumber, 3, 10, QChar('0'))
+		.arg(timecodeStart)
+		.arg(timecodeEnd)
+		.arg(timecodeStart)
+		.arg(timecodeEnd);
+
+	// Write comment line with marker metadata
+	QString fullChapterName = chapterName;
+	if (addChapterSourceEnabled && !chapterName.contains(chapterSource)) {
+		fullChapterName += " (" + chapterSource + ")";
+	}
+
+	// Use different colors based on source for visual distinction in DaVinci Resolve
+	QString markerColor = "ResolveColorBlue";
+	if (chapterSource.contains("Manual")) {
+		markerColor = "ResolveColorGreen";
+	} else if (chapterSource.contains("Scene")) {
+		markerColor = "ResolveColorYellow";
+	} else if (chapterSource.contains("Hotkey")) {
+		markerColor = "ResolveColorPurple";
+	}
+
+	out << fullChapterName << " |C:" << markerColor << " |M:" << chapterName << " |D:1\n\n";
+
+	file.close();
+
+	// Increment event number for next marker
+	edlEventNumber++;
 }
 
 void ChapterMarkerDock::writeAnnotationToFiles(const QString &annotationText, const QString &timestamp,
@@ -1200,6 +1323,10 @@ void ChapterMarkerDock::addChapterMarker(const QString &chapterName, const QStri
 		writeChapterToXMLFile(chapterName, timestamp, chapterSource);
 	}
 
+	if (exportChaptersToEDLEnabled) {
+		writeChapterToEDLFile(chapterName, timestamp, chapterSource);
+	}
+
 	blog(LOG_INFO, "[StreamUP Record Chapter Manager] Added chapter marker: %s", QT_TO_UTF8(fullChapterName));
 
 	updateCurrentChapterLabel(fullChapterName);
@@ -1311,6 +1438,7 @@ void ChapterMarkerDock::LoadSettings(obs_data_t *settings)
 	exportChaptersToFileEnabled = obs_data_get_bool(settings, "exportChaptersToFileEnabled");
 	exportChaptersToTextEnabled = obs_data_get_bool(settings, "exportChaptersToTextEnabled");
 	exportChaptersToXMLEnabled = obs_data_get_bool(settings, "exportChaptersToXmlEnabled");
+	exportChaptersToEDLEnabled = obs_data_get_bool(settings, "exportChaptersToEDLEnabled");
 
 	// Write chapters to video
 	insertChapterMarkersInVideoEnabled = obs_data_get_bool(settings, "insertChapterMarkersInVideoEnabled");
@@ -1355,6 +1483,7 @@ void ChapterMarkerDock::SaveSettings()
 	obs_data_set_bool(settings, "exportChaptersToFileEnabled", exportChaptersToFileCheckbox->isChecked());
 	obs_data_set_bool(settings, "exportChaptersToTextEnabled", exportChaptersToTextCheckbox->isChecked());
 	obs_data_set_bool(settings, "exportChaptersToXmlEnabled", exportChaptersToXMLCheckbox->isChecked());
+	obs_data_set_bool(settings, "exportChaptersToEDLEnabled", exportChaptersToEDLCheckbox->isChecked());
 
 	// Write chapters to video
 	obs_data_set_bool(settings, "insertChapterMarkersInVideoEnabled", insertChapterMarkersCheckbox->isChecked());

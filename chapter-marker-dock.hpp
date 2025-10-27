@@ -41,14 +41,20 @@ public:
 	void showFeedbackMessage(const QString &message, bool isError);
 	void clearPreviousChaptersGroup();
 	void writeChapterToTextFile(const QString &chapterName, const QString &timestamp, const QString &chapterSource);
+	void writeChapterToEDLFile(const QString &chapterName, const QString &timestamp, const QString &chapterSource);
+	void setExportEDLFilePath(const QString &filePath);
+	QString convertTimestampToTimecode(const QString &timestamp, int frameNumber) const;
 	void addChapterMarker(const QString &chapterName, const QString &chapterSource);
 	bool exportChaptersToTextEnabled;
 	bool exportChaptersToXMLEnabled;
+	bool exportChaptersToEDLEnabled;
 	bool exportChaptersToFileEnabled;
 	bool insertChapterMarkersInVideoEnabled;
 	QString exportTextFilePath;
 	QString exportXMLFilePath;
+	QString exportEDLFilePath;
 	QString defaultChapterName;
+	int edlEventNumber;
 	QStringList ignoredScenes;
 	bool chapterOnSceneChangeEnabled;
 	bool showPreviousChaptersEnabled;
@@ -116,6 +122,7 @@ private:
 	QCheckBox *exportChaptersToFileCheckbox;
 	QCheckBox *exportChaptersToTextCheckbox;
 	QCheckBox *exportChaptersToXMLCheckbox;
+	QCheckBox *exportChaptersToEDLCheckbox;
 	QGroupBox *exportSettingsGroup;
 	QCheckBox *insertChapterMarkersCheckbox;
 	void setupSettingsExportGroup(QVBoxLayout *mainLayout);
@@ -157,6 +164,7 @@ private:
 
 	QHBoxLayout *textCheckboxLayout;
 	QHBoxLayout *xmlCheckboxLayout;
+	QHBoxLayout *edlCheckboxLayout;
 	QVBoxLayout *exportSettingsLayout;
 	bool incompatibleFileTypeMessageShown = false;
 };
