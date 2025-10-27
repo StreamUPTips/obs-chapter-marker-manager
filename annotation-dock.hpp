@@ -12,7 +12,6 @@
 // Forward declarations
 class ChapterMarkerDock;
 class QVBoxLayout;
-struct obs_frontend_event;
 
 /**
  * @class AnnotationDock
