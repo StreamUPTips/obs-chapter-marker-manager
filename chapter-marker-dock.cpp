@@ -1043,22 +1043,40 @@ void ChapterMarkerDock::createExportFiles()
 			// Get frame rate
 			obs_video_info ovi;
 			int fps = 30;
+			bool isNtsc = false;
 			if (obs_get_video_info(&ovi)) {
 				fps = static_cast<int>(round(static_cast<double>(ovi.fps_num) / ovi.fps_den));
+				// Check if it's NTSC (29.97 or 59.94)
+				double actualFps = static_cast<double>(ovi.fps_num) / ovi.fps_den;
+				isNtsc = (fabs(actualFps - 29.97) < 0.01) || (fabs(actualFps - 59.94) < 0.01);
 			}
 
 			out << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
 			out << "<!DOCTYPE xmeml>\n";
 			out << "<xmeml version=\"4\">\n";
-			out << "  <sequence>\n";
-			out << "    <name>" << baseName << "</name>\n";
-			out << "    <rate>\n";
-			out << "      <timebase>" << fps << "</timebase>\n";
-			out << "      <ntsc>FALSE</ntsc>\n";
-			out << "    </rate>\n";
-			out << "    <media>\n";
-			out << "      <video>\n";
-			out << "        <track>\n";
+			out << "\t<sequence id=\"sequence-1\">\n";
+			out << "\t\t<name>" << baseName << "</name>\n";
+			out << "\t\t<rate>\n";
+			out << "\t\t\t<timebase>" << fps << "</timebase>\n";
+			out << "\t\t\t<ntsc>" << (isNtsc ? "TRUE" : "FALSE") << "</ntsc>\n";
+			out << "\t\t</rate>\n";
+			out << "\t\t<media>\n";
+			out << "\t\t\t<video>\n";
+			out << "\t\t\t\t<track>\n";
+			out << "\t\t\t\t\t<enabled>TRUE</enabled>\n";
+			out << "\t\t\t\t\t<locked>FALSE</locked>\n";
+			out << "\t\t\t\t</track>\n";
+			out << "\t\t\t</video>\n";
+			out << "\t\t</media>\n";
+			out << "\t\t<timecode>\n";
+			out << "\t\t\t<rate>\n";
+			out << "\t\t\t\t<timebase>" << fps << "</timebase>\n";
+			out << "\t\t\t\t<ntsc>" << (isNtsc ? "TRUE" : "FALSE") << "</ntsc>\n";
+			out << "\t\t\t</rate>\n";
+			out << "\t\t\t<string>00;00;00;00</string>\n";
+			out << "\t\t\t<frame>0</frame>\n";
+			out << "\t\t\t<displayformat>DF</displayformat>\n";
+			out << "\t\t</timecode>\n";
 			premiereXmlFile.close();
 			blog(LOG_INFO, "[StreamUP Record Chapter Manager] Created Premiere XML chapter file: %s", QT_TO_UTF8(premiereXmlFilePath));
 			setExportPremiereXMLFilePath(premiereXmlFilePath);
@@ -1238,12 +1256,12 @@ void ChapterMarkerDock::writeChapterToPremiereXMLFile(const QString &chapterName
 	}
 
 	QTextStream out(&file);
-	out << "          <marker>\n";
-	out << "            <name>" << fullChapterName << "</name>\n";
-	out << "            <comment>" << chapterName << "</comment>\n";
-	out << "            <in>" << frameNumber << "</in>\n";
-	out << "            <out>" << (frameNumber + 1) << "</out>\n";
-	out << "          </marker>\n";
+	out << "\t\t<marker>\n";
+	out << "\t\t\t<comment></comment>\n";
+	out << "\t\t\t<name>" << fullChapterName << "</name>\n";
+	out << "\t\t\t<in>" << frameNumber << "</in>\n";
+	out << "\t\t\t<out>-1</out>\n";
+	out << "\t\t</marker>\n";
 	file.close();
 }
 
@@ -1284,10 +1302,7 @@ void ChapterMarkerDock::closePremiereXMLFile()
 	}
 
 	QTextStream out(&file);
-	out << "        </track>\n";
-	out << "      </video>\n";
-	out << "    </media>\n";
-	out << "  </sequence>\n";
+	out << "\t</sequence>\n";
 	out << "</xmeml>\n";
 	file.close();
 
