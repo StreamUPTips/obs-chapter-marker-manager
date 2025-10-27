@@ -24,7 +24,8 @@ namespace Constants {
 
 	// File extensions
 	constexpr const char *TEXT_FILE_SUFFIX = "_chapters.txt";
-	constexpr const char *XML_FILE_SUFFIX = "_chapters.xml";
+	constexpr const char *FCPXML_FILE_SUFFIX = "_chapters_fcp.xml";
+	constexpr const char *PREMIEREXML_FILE_SUFFIX = "_chapters_premiere.xml";
 	constexpr const char *EDL_FILE_SUFFIX = "_chapters.edl";
 
 	// Theme IDs

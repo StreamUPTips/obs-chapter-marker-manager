@@ -34,15 +34,18 @@ ChapterMarkerDock::ChapterMarkerDock(QWidget *parent)
 	: QFrame(parent),
 	  annotationDock(nullptr),
 	  exportChaptersToTextEnabled(false),
-	  exportChaptersToXMLEnabled(false),
+	  exportChaptersToFCPXMLEnabled(false),
+	  exportChaptersToPremiereXMLEnabled(false),
 	  exportChaptersToEDLEnabled(false),
 	  exportChaptersToFileEnabled(false),
 	  insertChapterMarkersInVideoEnabled(false),
 	  exportTextFilePath(""),
-	  exportXMLFilePath(""),
+	  exportFCPXMLFilePath(""),
+	  exportPremiereXMLFilePath(""),
 	  exportEDLFilePath(""),
 	  defaultChapterName(obs_module_text("DefaultChapterName")),
 	  edlEventNumber(1),
+	  fcpMarkerID(1),
 	  ignoredScenes(),
 	  chapterOnSceneChangeEnabled(false),
 	  showPreviousChaptersEnabled(false),
@@ -60,7 +63,8 @@ ChapterMarkerDock::ChapterMarkerDock(QWidget *parent)
 	  chaptersListWidget(nullptr),
 	  exportChaptersToFileCheckbox(nullptr),
 	  exportChaptersToTextCheckbox(nullptr),
-	  exportChaptersToXMLCheckbox(nullptr),
+	  exportChaptersToFCPXMLCheckbox(nullptr),
+	  exportChaptersToPremiereXMLCheckbox(nullptr),
 	  exportChaptersToEDLCheckbox(nullptr),
 	  exportSettingsGroup(nullptr),
 	  insertChapterMarkersCheckbox(nullptr),
@@ -86,7 +90,8 @@ ChapterMarkerDock::ChapterMarkerDock(QWidget *parent)
 	  chapters(),
 	  timestamps(),
 	  textCheckboxLayout(nullptr),
-	  xmlCheckboxLayout(nullptr),
+	  fcpXmlCheckboxLayout(nullptr),
+	  premiereXmlCheckboxLayout(nullptr),
 	  edlCheckboxLayout(nullptr),
 	  exportSettingsLayout(nullptr)
 {
@@ -319,12 +324,17 @@ void ChapterMarkerDock::onRecordingStopped()
 	QString timestamp = getCurrentRecordingTime();
 	writeChapterToTextFile(obs_module_text("End"), timestamp, obs_module_text("Recording"));
 
+	// Close XML files with proper closing tags
+	closeFCPXMLFile();
+	closePremiereXMLFile();
+
 	clearPreviousChaptersGroup();
 	blog(LOG_INFO, "[StreamUP Record Chapter Manager] chapterCount: %d", chapterCount);
 
 	incompatibleFileTypeMessageShown = false;
 	chapterCount = Constants::DEFAULT_CHAPTER_COUNT; // Reset chapter count
 	edlEventNumber = 1; // Reset EDL event number for next recording
+	fcpMarkerID = 1; // Reset FCP marker ID for next recording
 }
 
 void ChapterMarkerDock::onPreviousChapterSelected()
@@ -545,18 +555,22 @@ void ChapterMarkerDock::setupSettingsExportGroup(QVBoxLayout *mainLayout)
 	exportChaptersToFileCheckbox->setToolTip(obs_module_text("ExportSettingsExportToFileTooltip"));
 	exportChaptersToTextCheckbox = new QCheckBox(obs_module_text("ExportSettingsExportToText"), exportSettingsGroup);
 	exportChaptersToTextCheckbox->setToolTip(obs_module_text("ExportSettingsExportToTextTooltip"));
-	exportChaptersToXMLCheckbox = new QCheckBox(obs_module_text("ExportSettingsExportToXml"), exportSettingsGroup);
-	exportChaptersToXMLCheckbox->setToolTip(obs_module_text("ExportSettingsExportToXmlTooltip"));
+	exportChaptersToFCPXMLCheckbox = new QCheckBox(obs_module_text("ExportSettingsExportToFCPXml"), exportSettingsGroup);
+	exportChaptersToFCPXMLCheckbox->setToolTip(obs_module_text("ExportSettingsExportToFCPXmlTooltip"));
+	exportChaptersToPremiereXMLCheckbox = new QCheckBox(obs_module_text("ExportSettingsExportToPremiereXml"), exportSettingsGroup);
+	exportChaptersToPremiereXMLCheckbox->setToolTip(obs_module_text("ExportSettingsExportToPremiereXmlTooltip"));
 	exportChaptersToEDLCheckbox = new QCheckBox(obs_module_text("ExportSettingsExportToEDL"), exportSettingsGroup);
 	exportChaptersToEDLCheckbox->setToolTip(obs_module_text("ExportSettingsExportToEDLTooltip"));
 
 	// Set check boxes visually
 	exportChaptersToFileCheckbox->setChecked(exportChaptersToFileEnabled);
 	exportChaptersToTextCheckbox->setChecked(exportChaptersToTextEnabled);
-	exportChaptersToXMLCheckbox->setChecked(exportChaptersToXMLEnabled);
+	exportChaptersToFCPXMLCheckbox->setChecked(exportChaptersToFCPXMLEnabled);
+	exportChaptersToPremiereXMLCheckbox->setChecked(exportChaptersToPremiereXMLEnabled);
 	exportChaptersToEDLCheckbox->setChecked(exportChaptersToEDLEnabled);
 	exportChaptersToTextCheckbox->setVisible(exportChaptersToFileEnabled);
-	exportChaptersToXMLCheckbox->setVisible(exportChaptersToFileEnabled);
+	exportChaptersToFCPXMLCheckbox->setVisible(exportChaptersToFileEnabled);
+	exportChaptersToPremiereXMLCheckbox->setVisible(exportChaptersToFileEnabled);
 	exportChaptersToEDLCheckbox->setVisible(exportChaptersToFileEnabled);
 
 	connect(exportChaptersToFileCheckbox, &QCheckBox::toggled, this, &ChapterMarkerDock::onExportChaptersToFileToggled);
@@ -564,25 +578,30 @@ void ChapterMarkerDock::setupSettingsExportGroup(QVBoxLayout *mainLayout)
 	exportSettingsLayout->addWidget(exportChaptersToFileCheckbox);
 
 	textCheckboxLayout = new QHBoxLayout;
-	xmlCheckboxLayout = new QHBoxLayout;
+	fcpXmlCheckboxLayout = new QHBoxLayout;
+	premiereXmlCheckboxLayout = new QHBoxLayout;
 	edlCheckboxLayout = new QHBoxLayout;
 	// Add a spacer to the layouts to create the indent
 	textCheckboxLayout->addSpacing(Constants::INDENT_SPACING);
-	xmlCheckboxLayout->addSpacing(Constants::INDENT_SPACING);
+	fcpXmlCheckboxLayout->addSpacing(Constants::INDENT_SPACING);
+	premiereXmlCheckboxLayout->addSpacing(Constants::INDENT_SPACING);
 	edlCheckboxLayout->addSpacing(Constants::INDENT_SPACING);
 	// Add the checkboxes to the layouts
 	textCheckboxLayout->addWidget(exportChaptersToTextCheckbox);
-	xmlCheckboxLayout->addWidget(exportChaptersToXMLCheckbox);
+	fcpXmlCheckboxLayout->addWidget(exportChaptersToFCPXMLCheckbox);
+	premiereXmlCheckboxLayout->addWidget(exportChaptersToPremiereXMLCheckbox);
 	edlCheckboxLayout->addWidget(exportChaptersToEDLCheckbox);
 
 	// Add the QHBoxLayouts to the main layout
 	if (!exportChaptersToFileEnabled) {
 		exportSettingsLayout->removeItem(textCheckboxLayout);
-		exportSettingsLayout->removeItem(xmlCheckboxLayout);
+		exportSettingsLayout->removeItem(fcpXmlCheckboxLayout);
+		exportSettingsLayout->removeItem(premiereXmlCheckboxLayout);
 		exportSettingsLayout->removeItem(edlCheckboxLayout);
 	} else {
 		exportSettingsLayout->addLayout(textCheckboxLayout);
-		exportSettingsLayout->addLayout(xmlCheckboxLayout);
+		exportSettingsLayout->addLayout(fcpXmlCheckboxLayout);
+		exportSettingsLayout->addLayout(premiereXmlCheckboxLayout);
 		exportSettingsLayout->addLayout(edlCheckboxLayout);
 	}
 
@@ -643,16 +662,19 @@ void ChapterMarkerDock::onExportChaptersToFileToggled(bool checked)
 {
 	exportChaptersToFileEnabled = checked;
 	exportChaptersToTextCheckbox->setVisible(checked);
-	exportChaptersToXMLCheckbox->setVisible(checked);
+	exportChaptersToFCPXMLCheckbox->setVisible(checked);
+	exportChaptersToPremiereXMLCheckbox->setVisible(checked);
 	exportChaptersToEDLCheckbox->setVisible(checked);
 
 	if (!checked) {
 		exportSettingsLayout->removeItem(textCheckboxLayout);
-		exportSettingsLayout->removeItem(xmlCheckboxLayout);
+		exportSettingsLayout->removeItem(fcpXmlCheckboxLayout);
+		exportSettingsLayout->removeItem(premiereXmlCheckboxLayout);
 		exportSettingsLayout->removeItem(edlCheckboxLayout);
 	} else {
 		exportSettingsLayout->addLayout(textCheckboxLayout);
-		exportSettingsLayout->addLayout(xmlCheckboxLayout);
+		exportSettingsLayout->addLayout(fcpXmlCheckboxLayout);
+		exportSettingsLayout->addLayout(premiereXmlCheckboxLayout);
 		exportSettingsLayout->addLayout(edlCheckboxLayout);
 	}
 
@@ -975,20 +997,74 @@ void ChapterMarkerDock::createExportFiles()
 		}
 	}
 
-	if (exportChaptersToXMLEnabled) {
-		const QString xmlFilePath = directoryPath + "/" + baseName + Constants::XML_FILE_SUFFIX;
-		QFile xmlFile(xmlFilePath);
-		if (xmlFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
-			QTextStream out(&xmlFile);
-			out << "<ChapterMarkers>\n";
-			out << "  <Title>" << baseName << "</Title>\n";
-			out << "</ChapterMarkers>\n";
-			xmlFile.close();
-			blog(LOG_INFO, "[StreamUP Record Chapter Manager] Created XML chapter file: %s", QT_TO_UTF8(xmlFilePath));
-			setExportXMLFilePath(xmlFilePath);
+	if (exportChaptersToFCPXMLEnabled) {
+		const QString fcpXmlFilePath = directoryPath + "/" + baseName + Constants::FCPXML_FILE_SUFFIX;
+		QFile fcpXmlFile(fcpXmlFilePath);
+		if (fcpXmlFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
+			QTextStream out(&fcpXmlFile);
+			// Get frame rate
+			obs_video_info ovi;
+			int fps = 30;
+			if (obs_get_video_info(&ovi)) {
+				fps = static_cast<int>(round(static_cast<double>(ovi.fps_num) / ovi.fps_den));
+			}
+
+			out << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
+			out << "<!DOCTYPE xmeml>\n";
+			out << "<xmeml version=\"5\">\n";
+			out << "  <clip>\n";
+			out << "    <rate>\n";
+			out << "      <timebase>" << fps << "</timebase>\n";
+			out << "    </rate>\n";
+			out << "    <media>\n";
+			out << "      <video>\n";
+			out << "        <track>\n";
+			out << "          <clipitem>\n";
+			out << "            <file id=\"file1\">\n";
+			out << "              <pathurl>" << baseName << "</pathurl>\n";
+			out << "              <media>\n";
+			out << "                <video/>\n";
+			out << "              </media>\n";
+			out << "            </file>\n";
+			fcpXmlFile.close();
+			blog(LOG_INFO, "[StreamUP Record Chapter Manager] Created FCP XML chapter file: %s", QT_TO_UTF8(fcpXmlFilePath));
+			setExportFCPXMLFilePath(fcpXmlFilePath);
 		} else {
-			blog(LOG_ERROR, "[StreamUP Record Chapter Manager] Failed to create XML chapter file: %s",
-			     QT_TO_UTF8(xmlFilePath));
+			blog(LOG_ERROR, "[StreamUP Record Chapter Manager] Failed to create FCP XML chapter file: %s",
+			     QT_TO_UTF8(fcpXmlFilePath));
+		}
+	}
+
+	if (exportChaptersToPremiereXMLEnabled) {
+		const QString premiereXmlFilePath = directoryPath + "/" + baseName + Constants::PREMIEREXML_FILE_SUFFIX;
+		QFile premiereXmlFile(premiereXmlFilePath);
+		if (premiereXmlFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
+			QTextStream out(&premiereXmlFile);
+			// Get frame rate
+			obs_video_info ovi;
+			int fps = 30;
+			if (obs_get_video_info(&ovi)) {
+				fps = static_cast<int>(round(static_cast<double>(ovi.fps_num) / ovi.fps_den));
+			}
+
+			out << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
+			out << "<!DOCTYPE xmeml>\n";
+			out << "<xmeml version=\"4\">\n";
+			out << "  <sequence>\n";
+			out << "    <name>" << baseName << "</name>\n";
+			out << "    <rate>\n";
+			out << "      <timebase>" << fps << "</timebase>\n";
+			out << "      <ntsc>FALSE</ntsc>\n";
+			out << "    </rate>\n";
+			out << "    <media>\n";
+			out << "      <video>\n";
+			out << "        <track>\n";
+			premiereXmlFile.close();
+			blog(LOG_INFO, "[StreamUP Record Chapter Manager] Created Premiere XML chapter file: %s", QT_TO_UTF8(premiereXmlFilePath));
+			setExportPremiereXMLFilePath(premiereXmlFilePath);
+		} else {
+			blog(LOG_ERROR, "[StreamUP Record Chapter Manager] Failed to create Premiere XML chapter file: %s",
+			     QT_TO_UTF8(premiereXmlFilePath));
 		}
 	}
 
@@ -1039,9 +1115,14 @@ void ChapterMarkerDock::writeChapterToTextFile(const QString &chapterName, const
 	}
 }
 
-void ChapterMarkerDock::setExportXMLFilePath(const QString &filePath)
+void ChapterMarkerDock::setExportFCPXMLFilePath(const QString &filePath)
 {
-	exportXMLFilePath = filePath;
+	exportFCPXMLFilePath = filePath;
+}
+
+void ChapterMarkerDock::setExportPremiereXMLFilePath(const QString &filePath)
+{
+	exportPremiereXMLFilePath = filePath;
 }
 
 void ChapterMarkerDock::setExportEDLFilePath(const QString &filePath)
@@ -1074,31 +1155,143 @@ QString ChapterMarkerDock::convertTimestampToTimecode(const QString &timestamp, 
 		.arg(frameNumber, 2, 10, QChar('0'));
 }
 
-void ChapterMarkerDock::writeChapterToXMLFile(const QString &chapterName, const QString &timestamp, const QString &chapterSource)
+void ChapterMarkerDock::writeChapterToFCPXMLFile(const QString &chapterName, const QString &timestamp, const QString &chapterSource)
 {
-	if (!exportChaptersToFileEnabled || !exportChaptersToXMLEnabled) {
+	if (!exportChaptersToFileEnabled || !exportChaptersToFCPXMLEnabled) {
 		return;
 	}
 
-	if (exportXMLFilePath.isEmpty()) {
-		blog(LOG_ERROR, "[StreamUP Record Chapter Manager] XML file path is not set, creating a new file.");
+	if (exportFCPXMLFilePath.isEmpty()) {
+		blog(LOG_ERROR, "[StreamUP Record Chapter Manager] FCP XML file path is not set, creating a new file.");
 		createExportFiles();
 		return;
 	}
 
-	QFile file(exportXMLFilePath);
+	// Convert timestamp HH:MM:SS to frame number
+	QTime time = QTime::fromString(timestamp, "HH:mm:ss");
+	int totalSeconds = time.hour() * 3600 + time.minute() * 60 + time.second();
+
+	obs_video_info ovi;
+	int fps = 30;
+	if (obs_get_video_info(&ovi)) {
+		fps = static_cast<int>(round(static_cast<double>(ovi.fps_num) / ovi.fps_den));
+	}
+
+	int frameNumber = totalSeconds * fps;
+
+	QFile file(exportFCPXMLFilePath);
 	if (!file.open(QIODevice::Append | QIODevice::Text)) {
-		blog(LOG_ERROR, "[StreamUP Record Chapter Manager] Failed to open XML file: %s", QT_TO_UTF8(exportXMLFilePath));
+		blog(LOG_ERROR, "[StreamUP Record Chapter Manager] Failed to open FCP XML file: %s", QT_TO_UTF8(exportFCPXMLFilePath));
+		return;
+	}
+
+	QString fullChapterName = chapterName;
+	if (addChapterSourceEnabled && !chapterName.contains(chapterSource)) {
+		fullChapterName += " (" + chapterSource + ")";
+	}
+
+	QTextStream out(&file);
+	out << "            <marker>\n";
+	out << "              <comment>" << fullChapterName << "</comment>\n";
+	out << "              <name>" << chapterName << "</name>\n";
+	out << "              <in>" << frameNumber << "</in>\n";
+	out << "              <out>-1</out>\n";
+	out << "            </marker>\n";
+	file.close();
+
+	fcpMarkerID++;
+}
+
+void ChapterMarkerDock::writeChapterToPremiereXMLFile(const QString &chapterName, const QString &timestamp, const QString &chapterSource)
+{
+	if (!exportChaptersToFileEnabled || !exportChaptersToPremiereXMLEnabled) {
+		return;
+	}
+
+	if (exportPremiereXMLFilePath.isEmpty()) {
+		blog(LOG_ERROR, "[StreamUP Record Chapter Manager] Premiere XML file path is not set, creating a new file.");
+		createExportFiles();
+		return;
+	}
+
+	// Convert timestamp HH:MM:SS to frame number
+	QTime time = QTime::fromString(timestamp, "HH:mm:ss");
+	int totalSeconds = time.hour() * 3600 + time.minute() * 60 + time.second();
+
+	obs_video_info ovi;
+	int fps = 30;
+	if (obs_get_video_info(&ovi)) {
+		fps = static_cast<int>(round(static_cast<double>(ovi.fps_num) / ovi.fps_den));
+	}
+
+	int frameNumber = totalSeconds * fps;
+
+	QFile file(exportPremiereXMLFilePath);
+	if (!file.open(QIODevice::Append | QIODevice::Text)) {
+		blog(LOG_ERROR, "[StreamUP Record Chapter Manager] Failed to open Premiere XML file: %s", QT_TO_UTF8(exportPremiereXMLFilePath));
+		return;
+	}
+
+	QString fullChapterName = chapterName;
+	if (addChapterSourceEnabled && !chapterName.contains(chapterSource)) {
+		fullChapterName += " (" + chapterSource + ")";
+	}
+
+	QTextStream out(&file);
+	out << "          <marker>\n";
+	out << "            <name>" << fullChapterName << "</name>\n";
+	out << "            <comment>" << chapterName << "</comment>\n";
+	out << "            <in>" << frameNumber << "</in>\n";
+	out << "            <out>" << (frameNumber + 1) << "</out>\n";
+	out << "          </marker>\n";
+	file.close();
+}
+
+void ChapterMarkerDock::closeFCPXMLFile()
+{
+	if (!exportChaptersToFCPXMLEnabled || exportFCPXMLFilePath.isEmpty()) {
+		return;
+	}
+
+	QFile file(exportFCPXMLFilePath);
+	if (!file.open(QIODevice::Append | QIODevice::Text)) {
+		blog(LOG_ERROR, "[StreamUP Record Chapter Manager] Failed to close FCP XML file: %s", QT_TO_UTF8(exportFCPXMLFilePath));
 		return;
 	}
 
 	QTextStream out(&file);
-	out << "  <Chapter>\n";
-	out << "    <Name>" << chapterName << "</Name>\n";
-	out << "    <Timestamp>" << timestamp << "</Timestamp>\n";
-	out << "    <Source>" << chapterSource << "</Source>\n";
-	out << "  </Chapter>\n";
+	out << "          </clipitem>\n";
+	out << "        </track>\n";
+	out << "      </video>\n";
+	out << "    </media>\n";
+	out << "  </clip>\n";
+	out << "</xmeml>\n";
 	file.close();
+
+	blog(LOG_INFO, "[StreamUP Record Chapter Manager] Closed FCP XML file: %s", QT_TO_UTF8(exportFCPXMLFilePath));
+}
+
+void ChapterMarkerDock::closePremiereXMLFile()
+{
+	if (!exportChaptersToPremiereXMLEnabled || exportPremiereXMLFilePath.isEmpty()) {
+		return;
+	}
+
+	QFile file(exportPremiereXMLFilePath);
+	if (!file.open(QIODevice::Append | QIODevice::Text)) {
+		blog(LOG_ERROR, "[StreamUP Record Chapter Manager] Failed to close Premiere XML file: %s", QT_TO_UTF8(exportPremiereXMLFilePath));
+		return;
+	}
+
+	QTextStream out(&file);
+	out << "        </track>\n";
+	out << "      </video>\n";
+	out << "    </media>\n";
+	out << "  </sequence>\n";
+	out << "</xmeml>\n";
+	file.close();
+
+	blog(LOG_INFO, "[StreamUP Record Chapter Manager] Closed Premiere XML file: %s", QT_TO_UTF8(exportPremiereXMLFilePath));
 }
 
 void ChapterMarkerDock::writeChapterToEDLFile(const QString &chapterName, const QString &timestamp, const QString &chapterSource)
@@ -1179,7 +1372,9 @@ void ChapterMarkerDock::writeAnnotationToFiles(const QString &annotationText, co
 	}
 
 	// Check and create export files if paths are empty
-	if (exportTextFilePath.isEmpty() || exportXMLFilePath.isEmpty()) {
+	if (exportTextFilePath.isEmpty() ||
+	    (exportChaptersToFCPXMLEnabled && exportFCPXMLFilePath.isEmpty()) ||
+	    (exportChaptersToPremiereXMLEnabled && exportPremiereXMLFilePath.isEmpty())) {
 		createExportFiles();
 	}
 
@@ -1196,20 +1391,14 @@ void ChapterMarkerDock::writeAnnotationToFiles(const QString &annotationText, co
 		}
 	}
 
-	// Writing to XML file if enabled
-	if (exportChaptersToXMLEnabled) {
-		QString xmlContent = QString("<Annotation>\n"
-					     "  <Timestamp>%1</Timestamp>\n"
-					     "  <Text>%2</Text>\n"
-					     "  <Source>%3</Source>\n"
-					     "</Annotation>\n")
-					     .arg(timestamp, annotationText, annotationSource);
+	// Write annotations as markers to FCP XML
+	if (exportChaptersToFCPXMLEnabled) {
+		writeChapterToFCPXMLFile(fullAnnotationText, timestamp, annotationSource);
+	}
 
-		if (!writeToFile(exportXMLFilePath, xmlContent)) {
-			blog(LOG_ERROR, "[StreamUP Record Chapter Manager] Failed to open XML file: %s",
-			     QT_TO_UTF8(exportXMLFilePath));
-			return;
-		}
+	// Write annotations as markers to Premiere XML
+	if (exportChaptersToPremiereXMLEnabled) {
+		writeChapterToPremiereXMLFile(fullAnnotationText, timestamp, annotationSource);
 	}
 
 	setAnnotationFeedbackLabel(obs_module_text("AnnotationSaved"), "good");
@@ -1319,8 +1508,12 @@ void ChapterMarkerDock::addChapterMarker(const QString &chapterName, const QStri
 		writeChapterToTextFile(chapterName, timestamp, chapterSource);
 	}
 
-	if (exportChaptersToXMLEnabled) {
-		writeChapterToXMLFile(chapterName, timestamp, chapterSource);
+	if (exportChaptersToFCPXMLEnabled) {
+		writeChapterToFCPXMLFile(chapterName, timestamp, chapterSource);
+	}
+
+	if (exportChaptersToPremiereXMLEnabled) {
+		writeChapterToPremiereXMLFile(chapterName, timestamp, chapterSource);
 	}
 
 	if (exportChaptersToEDLEnabled) {
@@ -1437,7 +1630,8 @@ void ChapterMarkerDock::LoadSettings(obs_data_t *settings)
 	// Write to files
 	exportChaptersToFileEnabled = obs_data_get_bool(settings, "exportChaptersToFileEnabled");
 	exportChaptersToTextEnabled = obs_data_get_bool(settings, "exportChaptersToTextEnabled");
-	exportChaptersToXMLEnabled = obs_data_get_bool(settings, "exportChaptersToXmlEnabled");
+	exportChaptersToFCPXMLEnabled = obs_data_get_bool(settings, "exportChaptersToFCPXmlEnabled");
+	exportChaptersToPremiereXMLEnabled = obs_data_get_bool(settings, "exportChaptersToPremiereXmlEnabled");
 	exportChaptersToEDLEnabled = obs_data_get_bool(settings, "exportChaptersToEDLEnabled");
 
 	// Write chapters to video
@@ -1482,7 +1676,8 @@ void ChapterMarkerDock::SaveSettings()
 	// Write to files
 	obs_data_set_bool(settings, "exportChaptersToFileEnabled", exportChaptersToFileCheckbox->isChecked());
 	obs_data_set_bool(settings, "exportChaptersToTextEnabled", exportChaptersToTextCheckbox->isChecked());
-	obs_data_set_bool(settings, "exportChaptersToXmlEnabled", exportChaptersToXMLCheckbox->isChecked());
+	obs_data_set_bool(settings, "exportChaptersToFCPXmlEnabled", exportChaptersToFCPXMLCheckbox->isChecked());
+	obs_data_set_bool(settings, "exportChaptersToPremiereXmlEnabled", exportChaptersToPremiereXMLCheckbox->isChecked());
 	obs_data_set_bool(settings, "exportChaptersToEDLEnabled", exportChaptersToEDLCheckbox->isChecked());
 
 	// Write chapters to video

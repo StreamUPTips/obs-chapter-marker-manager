@@ -30,8 +30,12 @@ public:
 
 	QString getChapterName() const;
 	void setExportTextFilePath(const QString &filePath);
-	void setExportXMLFilePath(const QString &filePath);
-	void writeChapterToXMLFile(const QString &chapterName, const QString &timestamp, const QString &chapterSource);
+	void setExportFCPXMLFilePath(const QString &filePath);
+	void setExportPremiereXMLFilePath(const QString &filePath);
+	void writeChapterToFCPXMLFile(const QString &chapterName, const QString &timestamp, const QString &chapterSource);
+	void writeChapterToPremiereXMLFile(const QString &chapterName, const QString &timestamp, const QString &chapterSource);
+	void closeFCPXMLFile();
+	void closePremiereXMLFile();
 
 	QString getDefaultChapterName() const { return defaultChapterName; }
 
@@ -46,15 +50,18 @@ public:
 	QString convertTimestampToTimecode(const QString &timestamp, int frameNumber) const;
 	void addChapterMarker(const QString &chapterName, const QString &chapterSource);
 	bool exportChaptersToTextEnabled;
-	bool exportChaptersToXMLEnabled;
+	bool exportChaptersToFCPXMLEnabled;
+	bool exportChaptersToPremiereXMLEnabled;
 	bool exportChaptersToEDLEnabled;
 	bool exportChaptersToFileEnabled;
 	bool insertChapterMarkersInVideoEnabled;
 	QString exportTextFilePath;
-	QString exportXMLFilePath;
+	QString exportFCPXMLFilePath;
+	QString exportPremiereXMLFilePath;
 	QString exportEDLFilePath;
 	QString defaultChapterName;
 	int edlEventNumber;
+	int fcpMarkerID;
 	QStringList ignoredScenes;
 	bool chapterOnSceneChangeEnabled;
 	bool showPreviousChaptersEnabled;
@@ -121,7 +128,8 @@ private:
 	void populateIgnoredScenesListWidget();
 	QCheckBox *exportChaptersToFileCheckbox;
 	QCheckBox *exportChaptersToTextCheckbox;
-	QCheckBox *exportChaptersToXMLCheckbox;
+	QCheckBox *exportChaptersToFCPXMLCheckbox;
+	QCheckBox *exportChaptersToPremiereXMLCheckbox;
 	QCheckBox *exportChaptersToEDLCheckbox;
 	QGroupBox *exportSettingsGroup;
 	QCheckBox *insertChapterMarkersCheckbox;
@@ -163,7 +171,8 @@ private:
 	QStringList timestamps;
 
 	QHBoxLayout *textCheckboxLayout;
-	QHBoxLayout *xmlCheckboxLayout;
+	QHBoxLayout *fcpXmlCheckboxLayout;
+	QHBoxLayout *premiereXmlCheckboxLayout;
 	QHBoxLayout *edlCheckboxLayout;
 	QVBoxLayout *exportSettingsLayout;
 	bool incompatibleFileTypeMessageShown = false;
