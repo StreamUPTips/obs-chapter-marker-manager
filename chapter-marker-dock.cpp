@@ -168,14 +168,27 @@ void ChapterMarkerDock::setupMainDockUI()
 	// Set the frame style
 	this->setFrameStyle(QFrame::StyledPanel | QFrame::Raised);
 
+	// Set object name for theme targeting
+	this->setObjectName("chapterMarkerDock");
+
+	// Add padding to the QFrame itself
+	this->setContentsMargins(8, 8, 8, 8);
+
 	QVBoxLayout *mainDockLayout = new QVBoxLayout(this);
+	mainDockLayout->setObjectName("chapterMarkerDockLayout");
 	mainDockLayout->setAlignment(Qt::AlignTop | Qt::AlignLeft);
 	mainDockLayout->setSizeConstraint(QLayout::SetMinimumSize);
+	mainDockLayout->setContentsMargins(0, 0, 0, 0);
+	mainDockLayout->setSpacing(0);
 
 	setupMainDockCurrentChapterLayout(mainDockLayout);
+	mainDockLayout->addSpacing(6);
 	setupMainDockChapterInput(mainDockLayout);
+	mainDockLayout->addSpacing(6);
 	setupMainDockSaveButtonLayout(mainDockLayout);
+	mainDockLayout->addSpacing(6);
 	setupMainDockFeedbackLabel(mainDockLayout);
+	// No spacing before previous chapters box
 	setupMainDockPreviousChaptersGroup(mainDockLayout);
 
 	setLayout(mainDockLayout);
@@ -184,9 +197,12 @@ void ChapterMarkerDock::setupMainDockUI()
 void ChapterMarkerDock::setupMainDockCurrentChapterLayout(QVBoxLayout *mainLayout)
 {
 	QHBoxLayout *chapterLabelLayout = new QHBoxLayout();
+	chapterLabelLayout->setObjectName("chapterLabelLayout");
 	chapterLabelLayout->setAlignment(Qt::AlignTop | Qt::AlignLeft);
 
+	currentChapterTextLabel->setObjectName("currentChapterTextLabel");
 	currentChapterTextLabel->setAlignment(Qt::AlignTop | Qt::AlignLeft);
+	currentChapterNameLabel->setObjectName("currentChapterNameLabel");
 	currentChapterNameLabel->setAlignment(Qt::AlignTop | Qt::AlignLeft);
 	currentChapterNameLabel->setWordWrap(true);
 	currentChapterNameLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
@@ -200,6 +216,7 @@ void ChapterMarkerDock::setupMainDockCurrentChapterLayout(QVBoxLayout *mainLayou
 
 void ChapterMarkerDock::setupMainDockChapterInput(QVBoxLayout *mainLayout)
 {
+	chapterNameInput->setObjectName("chapterNameInput");
 	chapterNameInput->setPlaceholderText(obs_module_text("EnterChapterName"));
 	chapterNameInput->setToolTip(obs_module_text("EnterChapterNameTooltip"));
 	mainLayout->addWidget(chapterNameInput);
@@ -208,12 +225,15 @@ void ChapterMarkerDock::setupMainDockChapterInput(QVBoxLayout *mainLayout)
 void ChapterMarkerDock::setupMainDockSaveButtonLayout(QVBoxLayout *mainLayout)
 {
 	QHBoxLayout *saveButtonLayout = new QHBoxLayout();
+	saveButtonLayout->setObjectName("saveButtonLayout");
 
 	// Make Save Chapter Marker button fill the horizontal space
+	saveChapterMarkerButton->setObjectName("saveChapterMarkerButton");
 	saveChapterMarkerButton->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 	saveChapterMarkerButton->setToolTip(obs_module_text("SaveChapterMarkerButtonTooltip"));
 
 	// Configure the settings button
+	settingsButton->setObjectName("settingsButton");
 	settingsButton->setToolTip(obs_module_text("SettingsTooltip"));
 	settingsButton->setProperty("themeID", "configIconSmall");
 	settingsButton->setProperty("class", "icon-gear");
@@ -224,6 +244,7 @@ void ChapterMarkerDock::setupMainDockSaveButtonLayout(QVBoxLayout *mainLayout)
 	settingsButton->style()->polish(settingsButton);
 
 	// Configure the annotation button
+	annotationButton->setObjectName("annotationButton");
 	annotationButton->setIcon(QIcon(":images/annotation-icon.svg"));
 	annotationButton->setMinimumSize(Constants::BUTTON_MIN_WIDTH, Constants::BUTTON_MIN_HEIGHT);
 	annotationButton->setMaximumSize(Constants::BUTTON_MAX_WIDTH, Constants::BUTTON_MAX_HEIGHT);
@@ -245,6 +266,7 @@ void ChapterMarkerDock::setupMainDockSaveButtonLayout(QVBoxLayout *mainLayout)
 
 void ChapterMarkerDock::setupMainDockFeedbackLabel(QVBoxLayout *mainLayout)
 {
+	feedbackLabel->setObjectName("feedbackLabel");
 	feedbackLabel->setProperty("themeID", "good");
 	style()->polish(feedbackLabel);
 	feedbackLabel->setWordWrap(true);
@@ -254,11 +276,12 @@ void ChapterMarkerDock::setupMainDockFeedbackLabel(QVBoxLayout *mainLayout)
 void ChapterMarkerDock::setupMainDockPreviousChaptersGroup(QVBoxLayout *mainLayout)
 {
 	previousChaptersGroup = new QGroupBox(obs_module_text("PreviousChapters"), this);
-	previousChaptersGroup->setStyleSheet(
-		"QGroupBox { font-weight: bold; border: 1px solid gray; padding: 10px; margin-top: 10px; } QGroupBox::title { subcontrol-origin: margin; subcontrol-position: top center; padding: 0 3px; }");
+	previousChaptersGroup->setObjectName("previousChaptersGroup");
 	previousChaptersGroup->setToolTip(obs_module_text("PreviousChaptersTooltip"));
 	QVBoxLayout *previousChaptersLayout = new QVBoxLayout(previousChaptersGroup);
-	previousChaptersLayout->setAlignment(Qt::AlignTop | Qt::AlignLeft); // Align previous chapters layout to top left
+	previousChaptersLayout->setObjectName("previousChaptersLayout");
+	previousChaptersLayout->setAlignment(Qt::AlignTop | Qt::AlignLeft);
+	previousChaptersList->setObjectName("previousChaptersList");
 	previousChaptersLayout->addWidget(previousChaptersList);
 	previousChaptersGroup->setLayout(previousChaptersLayout);
 

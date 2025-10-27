@@ -30,12 +30,27 @@ AnnotationDock::~AnnotationDock()
 
 void AnnotationDock::setupUI()
 {
-	QVBoxLayout *mainLayout = new QVBoxLayout(this);
-	mainLayout->addWidget(annotationEdit);
+	// Set object name for theme targeting
+	this->setObjectName("annotationDock");
 
+	// Add padding to the QFrame itself (no bottom padding)
+	this->setContentsMargins(8, 8, 8, 0);
+
+	QVBoxLayout *mainLayout = new QVBoxLayout(this);
+	mainLayout->setObjectName("annotationDockLayout");
+	mainLayout->setContentsMargins(0, 0, 0, 0);
+	mainLayout->setSpacing(0);
+
+	annotationEdit->setObjectName("annotationEdit");
+	mainLayout->addWidget(annotationEdit);
+	mainLayout->addSpacing(6);
+
+	saveAnnotationButton->setObjectName("saveAnnotationButton");
 	saveAnnotationButton->setToolTip(obs_module_text("SaveAnnotationButtonToolTip"));
 	mainLayout->addWidget(saveAnnotationButton);
+	// No spacing after button
 
+	feedbackLabel->setObjectName("annotationFeedbackLabel");
 	feedbackLabel->setAlignment(Qt::AlignTop | Qt::AlignLeft);
 	feedbackLabel->setWordWrap(true);
 	feedbackLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
